@@ -553,7 +553,9 @@ const monthlyTrends = computed(() =>
 );
 
 const blockStats = computed(() =>
-  state.blocks.map((block) => {
+  (state.blocks || [])
+    .filter((block) => block && block.id)
+    .map((block) => {
     const blockPlaces = state.places.filter((place) => place.blockId === block.id || place.blockCode === block.code);
     const occupied = blockPlaces.filter((place) => place.status === 'OCCUPIED').length;
     const expectedRevenue = blockPlaces
@@ -563,16 +565,16 @@ const blockStats = computed(() =>
       .filter((payment) => payment.blockCode === block.code && payment.periodYear === 2026 && payment.periodMonth === 8)
       .reduce((sum, payment) => sum + payment.amount, 0);
 
-    return {
-      ...block,
-      totalPlaces: blockPlaces.length,
-      occupiedPlaces: occupied,
-      availablePlaces: blockPlaces.filter((place) => place.status === 'AVAILABLE').length,
-      occupancyRate: blockPlaces.length > 0 ? Math.round((occupied / blockPlaces.length) * 100) : 0,
-      expectedRevenue,
-      obtainedRevenue,
-    };
-  })
+      return {
+        ...block,
+        totalPlaces: blockPlaces.length,
+        occupiedPlaces: occupied,
+        availablePlaces: blockPlaces.filter((place) => place.status === 'AVAILABLE').length,
+        occupancyRate: blockPlaces.length > 0 ? Math.round((occupied / blockPlaces.length) * 100) : 0,
+        expectedRevenue,
+        obtainedRevenue,
+      };
+    })
 );
 
 const overdueMerchants = computed(() =>

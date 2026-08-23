@@ -120,38 +120,7 @@
             </div>
           </section>
 
-          <section v-else-if="currentView === 'dashboard-admin'" class="space-y-6">
-            <div class="grid gap-4 md:grid-cols-3">
-              <MetricCard label="Places du marché" :value="String(kpis.totalPlaces)" helper="Base installée" tone-class="bg-blue-50 text-blue-700">
-                <template #icon><MapPin class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Places disponibles" :value="String(kpis.availablePlaces)" helper="Libre ou en attente" tone-class="bg-emerald-50 text-emerald-700">
-                <template #icon><Building2 class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Places maintenance" :value="String(kpis.maintenancePlaces)" helper="Travaux en cours" tone-class="bg-amber-50 text-amber-700">
-                <template #icon><Wrench class="h-5 w-5" /></template>
-              </MetricCard>
-            </div>
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 class="text-sm font-bold text-slate-900">Blocs & occupation</h2>
-              <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <article v-for="block in blockStats" :key="block.id" class="rounded-2xl border border-slate-200 p-4">
-                  <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-bold text-slate-900">{{ block.code }}</h3>
-                    <span class="text-[10px] font-bold text-slate-500">{{ block.occupancyRate }}%</span>
-                  </div>
-                  <p class="mt-1 text-xs text-slate-500">{{ block.name }}</p>
-                  <div class="mt-3 h-2 overflow-hidden bg-slate-100">
-                    <div class="h-full bg-[#1B2CC1]" :style="{ width: `${block.occupancyRate}%` }" />
-                  </div>
-                  <div class="mt-3 flex justify-between text-[11px] text-slate-500">
-                    <span>{{ block.occupiedPlaces }}/{{ block.totalPlaces }} occupées</span>
-                    <span>{{ money(block.expectedRevenue) }}</span>
-                  </div>
-                </article>
-              </div>
-            </div>
-          </section>
+          <AdminDashboard v-else-if="currentView === 'dashboard-admin'" />
 
           <section v-else-if="currentView === 'dashboard-accountant'" class="space-y-6">
             <div class="grid gap-4 md:grid-cols-3">
@@ -190,27 +159,7 @@
             </div>
           </section>
 
-          <section v-else-if="currentView === 'dashboard-occupancy'" class="space-y-6">
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h2 class="text-sm font-bold text-slate-900">Plan 2D & matrice d’occupation</h2>
-                  <p class="text-xs text-slate-500">Disposition simplifiée par bloc</p>
-                </div>
-                <span class="text-xs font-semibold text-slate-500">{{ kpis.occupiedPlaces }}/{{ kpis.totalPlaces }} occupées</span>
-              </div>
-              <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <article v-for="place in state.places" :key="place.id" :class="['rounded-2xl border p-4', place.status === 'OCCUPIED' ? 'border-emerald-200 bg-emerald-50/70' : place.status === 'MAINTENANCE' ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-slate-50']">
-                  <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-bold text-slate-900">{{ place.code }}</h3>
-                    <span class="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{{ place.status }}</span>
-                  </div>
-                  <p class="mt-1 text-xs text-slate-500">{{ place.blockCode }}</p>
-                  <p class="mt-2 text-xs font-semibold text-slate-700">{{ place.currentMerchantName || place.notes || 'Libre' }}</p>
-                </article>
-              </div>
-            </div>
-          </section>
+          <OccupancyDashboard v-else-if="currentView === 'dashboard-occupancy'" />
 
           <BlocksList v-else-if="currentView === 'structure-blocks'" />
 
@@ -256,10 +205,7 @@
 
           <BanksList v-else-if="currentView === 'finances-banks'" />
 
-          <section v-else-if="currentView === 'tools-excel'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Import / Export Excel</h2>
-            <p class="mt-2 text-sm text-slate-600">Le module est prêt pour brancher l’export `.xlsx` côté backend lorsque la base métier sera connectée.</p>
-          </section>
+          <ExcelManager v-else-if="currentView === 'tools-excel'" />
 
           <section v-else-if="currentView === 'tools-audit'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-bold text-slate-900">Journal d’audit</h2>
@@ -327,11 +273,13 @@ import {
   UserCheck,
   Users,
   Wallet,
-  Wrench,
 } from 'lucide-vue-next';
 import Sidebar from './components/layout/Sidebar.vue';
 import Navbar from './components/layout/Navbar.vue';
 import MetricCard from './components/common/MetricCard.vue';
+import AdminDashboard from './components/dashboard/AdminDashboard.vue';
+import OccupancyDashboard from './components/dashboard/OccupancyDashboard.vue';
+import ExcelManager from './components/tools/ExcelManager.vue';
 import BlocksList from './components/structure/BlocksList.vue';
 import PlacesList from './components/structure/PlacesList.vue';
 import MerchantsList from './components/merchants/MerchantsList.vue';
@@ -359,7 +307,6 @@ const pageSubtitle = marketStore.pageSubtitle;
 const overdueCount = marketStore.overdueCount;
 const kpis = marketStore.kpis;
 const monthlyTrends = marketStore.monthlyTrends;
-const blockStats = marketStore.blockStats;
 const overdueMerchants = marketStore.overdueMerchants;
 const totalTransactions = marketStore.totalTransactions;
 const totalBanked = marketStore.totalBanked;
