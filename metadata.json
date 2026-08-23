@@ -1,0 +1,6 @@
+{
+  "name": "Market Management",
+  "description": "Logiciel complet de gestion de marché : blocs, places, commerçants, loyers, paiements bancaires, reçus avec référence, mouvements d'occupation et dashboards analytiques par rôle (Super Admin, Admin, Comptable).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
