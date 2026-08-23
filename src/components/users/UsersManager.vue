@@ -151,22 +151,50 @@
               >
             </label>
             <label class="block">
-              <span class="mb-1 block font-semibold text-slate-700">Profil métier *</span>
+              <span class="mb-1 block font-semibold text-slate-700">Rôle *</span>
               <select
-                v-model="form.profile"
+                v-model="form.roleId"
                 class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none"
+                required
               >
-                <option value="COMMISSAIRE">Commissaire du marché</option>
-                <option value="ADMIN_MARCHE">Admin marché</option>
+                <option v-for="role in userRoles" :key="role.id" :value="role.id">
+                  {{ role.name }} ({{ role.code }})
+                </option>
               </select>
+            </label>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Nom d’utilisateur *</span>
+              <input
+                v-model="form.username"
+                type="text"
+                class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none"
+                required
+              >
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">{{ editingUser ? 'Nouveau mot de passe' : 'Mot de passe *' }}</span>
+              <input
+                v-model="form.password"
+                type="password"
+                class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none"
+                :required="!editingUser"
+                :placeholder="editingUser ? 'Laisser vide pour conserver' : ''"
+              >
             </label>
           </div>
 
           <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
             <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Aperçu</p>
             <p class="mt-1 text-sm font-bold text-slate-900">{{ previewTitle }}</p>
-            <p class="text-xs text-slate-500">Rôle technique: ADMIN</p>
+            <p class="text-xs text-slate-500">Rôle technique: {{ selectedRoleCode }}</p>
           </div>
+
+          <p v-if="formError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+            {{ formError }}
+          </p>
 
           <div class="flex justify-end gap-2 border-t border-slate-100 pt-3">
             <button
@@ -192,18 +220,30 @@ import { marketStore } from '../../store/index.js';
 
 const users = computed(() => marketStore.state.users || []);
 const currentUser = computed(() => marketStore.state.currentUser || null);
+const userRoles = computed(() => marketStore.state.roles || []);
 const isModalOpen = ref(false);
 const editingUser = ref(null);
+const formError = ref('');
 
 const form = reactive({
   name: '',
   email: '',
   phone: '',
-  profile: 'COMMISSAIRE',
+  username: '',
+  password: '',
+  roleId: '',
 });
 
 const adminCount = computed(() => users.value.filter((user) => user.role === 'ADMIN').length);
-const previewTitle = computed(() => (form.profile === 'ADMIN_MARCHE' ? 'Admin Marché' : 'Commissaire du Marché'));
+const selectedRoleCode = computed(() => {
+  const role = userRoles.value.find((item) => String(item.id) === String(form.roleId));
+  return role?.code || 'ADMIN';
+});
+const previewTitle = computed(() => {
+  if (selectedRoleCode.value === 'ACCOUNTANT') return 'Chef Comptable';
+  if (selectedRoleCode.value === 'SUPER_ADMIN') return 'Directeur Général';
+  return selectedRoleCode.value === 'ADMIN' ? 'Commissaire du Marché' : 'Utilisateur';
+});
 
 function roleLabel(role) {
   if (role === 'SUPER_ADMIN') return 'Super Admin';
@@ -216,7 +256,10 @@ function resetForm() {
   form.name = '';
   form.email = '';
   form.phone = '';
-  form.profile = 'COMMISSAIRE';
+  form.username = '';
+  form.password = '';
+  form.roleId = userRoles.value.find((role) => role.code === 'ADMIN')?.id || userRoles.value[0]?.id || '';
+  formError.value = '';
 }
 
 function openCreate() {
@@ -231,7 +274,9 @@ function openEdit(user) {
   form.name = user.name || '';
   form.email = user.email || '';
   form.phone = user.phone || '';
-  form.profile = user.title === 'Admin Marché' ? 'ADMIN_MARCHE' : 'COMMISSAIRE';
+  form.username = user.username || user.email?.split('@')[0] || '';
+  form.password = '';
+  form.roleId = user.roleId || user.role_id || userRoles.value.find((role) => role.code === user.role)?.id || userRoles.value[0]?.id || '';
   isModalOpen.value = true;
 }
 
@@ -241,33 +286,38 @@ function closeModal() {
   resetForm();
 }
 
-function saveUser() {
+async function saveUser() {
   const payload = {
     name: form.name,
     email: form.email,
     phone: form.phone,
-    role: 'ADMIN',
+    username: form.username,
+    password: form.password,
+    roleId: form.roleId,
     title: previewTitle.value,
   };
 
-  if (editingUser.value) {
-    marketStore.updateUser(editingUser.value.id, payload);
-  } else {
-    marketStore.addUser(payload);
+  try {
+    if (editingUser.value) {
+      await marketStore.updateUser(editingUser.value.id, payload);
+    } else {
+      await marketStore.addUser(payload);
+    }
+    closeModal();
+  } catch (error) {
+    formError.value = error?.payload?.message || error?.message || 'Impossible d’enregistrer l’utilisateur.';
   }
-
-  closeModal();
 }
 
 function activate(userId) {
   marketStore.setCurrentUser(userId);
 }
 
-function removeUser(user) {
+async function removeUser(user) {
   if (user.id === currentUser.value?.id || user.role === 'SUPER_ADMIN') return;
   const confirmed = window.confirm(`Supprimer l'utilisateur ${user.name} ?`);
   if (!confirmed) return;
-  marketStore.deleteUser(user.id);
+  await marketStore.deleteUser(user.id);
   if (editingUser.value?.id === user.id) {
     closeModal();
   }
