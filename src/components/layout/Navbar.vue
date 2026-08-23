@@ -17,15 +17,6 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <button
-        v-if="currentUser.role !== 'SUPER_ADMIN'"
-        class="flex cursor-pointer items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 active:bg-emerald-800"
-        @click="$emit('open-payment')"
-      >
-        <PlusCircle class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">Nouveau Paiement</span>
-      </button>
-
       <div class="relative">
         <button
           class="relative cursor-pointer rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
@@ -62,7 +53,6 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
-  PlusCircle,
 } from 'lucide-vue-next';
 
 defineProps({
@@ -79,6 +69,5 @@ defineEmits([
   'toggle-sidebar',
   'toggle-role-menu',
   'toggle-notifications',
-  'open-payment',
 ]);
 </script>

@@ -21,7 +21,6 @@
         @toggle-sidebar="toggleSidebar"
         @toggle-role-menu="toggleRoleMenu"
         @toggle-notifications="toggleNotifications"
-        @open-payment="openPaymentDrawer"
       />
 
       <div v-if="showNotifications" class="absolute right-6 top-20 z-40 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
@@ -305,12 +304,6 @@ const visibleRoutes = computed(() =>
   }))
 );
 
-const openPaymentDrawer = () => {
-  marketStore.setIsNewPaymentModalOpen(true);
-  if (route.path !== '/finances/payments') {
-    router.push('/finances/payments');
-  }
-};
 const changeRole = (role) => {
   marketStore.changeRole(role);
   router.push(getPathFromTab(state.activeTab));
