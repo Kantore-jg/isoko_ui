@@ -61,16 +61,34 @@
       </div>
     </div>
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredAssignments.length" />
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredAssignments.length === 0 && !isLoading && !dataError"
+      title="Affectations"
+      loading-message="Chargement des affectations..."
+      error-message="Impossible de charger les affectations."
+      empty-message="Aucune affectation ne correspond aux filtres actifs."
+    />
+
+    <PaginationControls
+      v-if="!isLoading && !dataError && filteredAssignments.length > 0"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+      :total-items="filteredAssignments.length"
+    />
   </section>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
 import PaginationControls from '../common/PaginationControls.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const assignments = computed(() => marketStore.state.assignments);
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const statusFilter = ref('ALL');
 const searchQuery = ref('');
 const currentPage = ref(1);

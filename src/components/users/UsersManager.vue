@@ -43,7 +43,17 @@
       </div>
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredUsers.length === 0 && !isLoading && !dataError"
+      title="Utilisateurs"
+      loading-message="Chargement des utilisateurs..."
+      error-message="Impossible de charger les utilisateurs."
+      empty-message="Aucun utilisateur ne correspond à la recherche."
+    />
+
+    <div v-if="!isLoading && !dataError && filteredUsers.length > 0" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div class="border-b border-slate-100 px-5 py-4">
         <h3 class="text-sm font-bold text-slate-900">Comptes existants</h3>
         <p class="mt-0.5 text-xs text-slate-500">Modifiez ou supprimez les comptes, ou activez celui que vous voulez utiliser.</p>
@@ -115,9 +125,6 @@
         </table>
       </div>
 
-      <p v-if="!filteredUsers.length" class="border-t border-slate-100 px-5 py-4 text-xs text-slate-500">
-        Aucun utilisateur ne correspond à la recherche.
-      </p>
     </div>
 
     <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
@@ -232,11 +239,14 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const users = computed(() => marketStore.state.users || []);
 const currentUser = computed(() => marketStore.state.currentUser || null);
 const userRoles = computed(() => marketStore.state.roles || []);
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const searchQuery = ref('');
 const isModalOpen = ref(false);
 const editingUser = ref(null);

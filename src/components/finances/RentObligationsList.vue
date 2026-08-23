@@ -42,7 +42,17 @@
       <input v-model="searchQuery" type="text" placeholder="Rechercher commerçant, place..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 md:w-80">
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredObligations.length === 0 && !isLoading && !dataError"
+      title="Loyers"
+      loading-message="Chargement des échéances..."
+      error-message="Impossible de charger les échéances."
+      empty-message="Aucune échéance ne correspond aux filtres actifs."
+    />
+
+    <div v-if="!isLoading && !dataError && filteredObligations.length > 0" class="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead class="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -76,16 +86,24 @@
       </div>
     </div>
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredObligations.length" />
+    <PaginationControls
+      v-if="!isLoading && !dataError && filteredObligations.length > 0"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+      :total-items="filteredObligations.length"
+    />
   </section>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
 import PaginationControls from '../common/PaginationControls.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const obligations = computed(() => marketStore.state.obligations);
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const statusFilter = ref('ALL');
 const monthFilter = ref('ALL');
 const searchQuery = ref('');

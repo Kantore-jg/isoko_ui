@@ -18,7 +18,17 @@
       </button>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredBlocks.length === 0 && !isLoading && !dataError"
+      title="Blocs"
+      loading-message="Chargement des blocs..."
+      error-message="Impossible de charger les blocs."
+      empty-message="Aucun bloc ne correspond à la recherche."
+    />
+
+    <div v-if="!isLoading && !dataError && filteredBlocks.length > 0" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Blocs actifs</p>
         <p class="mt-2 text-2xl font-extrabold text-slate-900">{{ blockCards.length }}</p>
@@ -62,7 +72,7 @@
       </div>
     </div>
 
-    <div class="grid gap-6 md:grid-cols-2">
+    <div v-if="!isLoading && !dataError && filteredBlocks.length > 0" class="grid gap-6 md:grid-cols-2">
       <article
         v-for="block in filteredBlocks"
         :key="block.id"
@@ -122,10 +132,6 @@
       </article>
     </div>
 
-    <div v-if="filteredBlocks.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-      Aucun bloc ne correspond à la recherche.
-    </div>
-
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <h3 class="mb-4 text-sm font-bold text-slate-900">
@@ -176,12 +182,15 @@
 <script setup>
 import { computed, reactive, ref } from 'vue';
 import { Edit, Plus, Search } from 'lucide-vue-next';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { formatCurrency } from '../../utils/format.js';
 import { marketStore } from '../../store/index.js';
 
 const blocks = computed(() => marketStore.state.blocks || []);
 const places = computed(() => marketStore.state.places || []);
 const currentUser = computed(() => marketStore.state.currentUser || { role: 'SUPER_ADMIN' });
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const searchQuery = ref('');
 const isOpen = ref(false);
 const editingBlock = ref(null);

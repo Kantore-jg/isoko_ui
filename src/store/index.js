@@ -94,6 +94,8 @@ const state = reactive({
   auditLogs: [],
   selectedReceipt: null,
   isNewPaymentModalOpen: false,
+  isLoadingData: false,
+  dataError: '',
   authError: '',
   authToken: '',
 });
@@ -124,6 +126,7 @@ function snapshotState() {
     payments: state.payments,
     receipts: state.receipts,
     auditLogs: state.auditLogs,
+    isLoadingData: state.isLoadingData,
   };
 }
 
@@ -308,19 +311,30 @@ async function loadBootstrapData(options = {}) {
 async function hydrateFromApi() {
   const token = getStoredToken();
 
+  state.isLoadingData = true;
+  state.dataError = '';
+
   if (!token) {
     state.authToken = '';
     state.currentUser = null;
     ready.value = true;
+    state.isLoadingData = false;
     return null;
   }
 
   state.authToken = token;
-  const payload = await loadBootstrapData();
-  applyApiState(payload);
-  ready.value = true;
-  persist();
-  return payload;
+  try {
+    const payload = await loadBootstrapData();
+    applyApiState(payload);
+    ready.value = true;
+    persist();
+    return payload;
+  } catch (error) {
+    state.dataError = error?.message || 'Impossible de charger les données.';
+    throw error;
+  } finally {
+    state.isLoadingData = false;
+  }
 }
 
 async function init() {
@@ -337,17 +351,27 @@ async function init() {
 
 async function login(credentials) {
   state.authError = '';
-  const response = await loginApi(credentials);
-  setStoredToken(response.access_token);
-  state.authToken = response.access_token;
-  const payload = await loadBootstrapData({
-    currentUser: mapCurrentUser(response.user),
-  });
-  applyApiState(payload);
-  state.currentUser = payload.currentUser;
-  ready.value = true;
-  persist();
-  return payload.currentUser;
+  state.isLoadingData = true;
+  state.dataError = '';
+
+  try {
+    const response = await loginApi(credentials);
+    setStoredToken(response.access_token);
+    state.authToken = response.access_token;
+    const payload = await loadBootstrapData({
+      currentUser: mapCurrentUser(response.user),
+    });
+    applyApiState(payload);
+    state.currentUser = payload.currentUser;
+    ready.value = true;
+    persist();
+    return payload.currentUser;
+  } catch (error) {
+    state.dataError = error?.message || 'Connexion impossible.';
+    throw error;
+  } finally {
+    state.isLoadingData = false;
+  }
 }
 
 async function logout() {
@@ -378,6 +402,8 @@ async function logout() {
   state.auditLogs = [];
   state.selectedReceipt = null;
   state.isNewPaymentModalOpen = false;
+  state.isLoadingData = false;
+  state.dataError = '';
   ready.value = true;
 }
 

@@ -38,7 +38,17 @@
       </div>
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredPlaces.length === 0 && !isLoading && !dataError"
+      title="Places"
+      loading-message="Chargement des places..."
+      error-message="Impossible de charger les places."
+      empty-message="Aucune place ne correspond aux filtres actifs."
+    />
+
+    <div v-if="!isLoading && !dataError && filteredPlaces.length > 0" class="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead class="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -85,7 +95,12 @@
       </div>
     </div>
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredPlaces.length" />
+    <PaginationControls
+      v-if="!isLoading && !dataError && filteredPlaces.length > 0"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+      :total-items="filteredPlaces.length"
+    />
 
     <div v-if="isCreateOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -226,11 +241,14 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
 import PaginationControls from '../common/PaginationControls.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const blocks = computed(() => marketStore.state.blocks);
 const places = computed(() => marketStore.state.places);
 const currentUser = computed(() => marketStore.state.currentUser || { role: 'SUPER_ADMIN' });
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const activeMerchants = computed(() => marketStore.state.merchants.filter((merchant) => merchant.status === 'ACTIVE'));
 
 const selectedBlock = ref('ALL');

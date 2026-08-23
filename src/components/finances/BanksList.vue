@@ -51,15 +51,26 @@
       </article>
     </div>
 
-    <p v-if="!filteredBanks.length" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-      Aucune banque ne correspond à la recherche.
-    </p>
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredBanks.length === 0 && !isLoading && !dataError"
+      title="Banques"
+      loading-message="Chargement des banques..."
+      error-message="Impossible de charger les banques."
+      empty-message="Aucune banque ne correspond à la recherche."
+    />
 
     <p v-if="formError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
       {{ formError }}
     </p>
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredBanks.length" />
+    <PaginationControls
+      v-if="!isLoading && !dataError && filteredBanks.length > 0"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+      :total-items="filteredBanks.length"
+    />
 
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -115,9 +126,12 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
 import PaginationControls from '../common/PaginationControls.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const banks = computed(() => marketStore.state.banks || []);
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const searchQuery = ref('');
 const currentPage = ref(1);
 const pageSize = 6;

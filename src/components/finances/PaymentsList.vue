@@ -14,7 +14,17 @@
       </div>
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-slate-200">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredPayments.length === 0 && !isLoading && !dataError"
+      title="Paiements"
+      loading-message="Chargement des paiements..."
+      error-message="Impossible de charger les paiements."
+      empty-message="Aucun paiement ne correspond aux filtres actifs."
+    />
+
+    <div v-if="!isLoading && !dataError && filteredPayments.length > 0" class="overflow-hidden rounded-2xl border border-slate-200">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead class="bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -59,27 +69,30 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="filteredPayments.length === 0">
-              <td colspan="8" class="px-4 py-6 text-center text-xs text-slate-500">
-                Aucun paiement ne correspond aux filtres actifs.
-              </td>
-            </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredPayments.length" />
+    <PaginationControls
+      v-if="!isLoading && !dataError && filteredPayments.length > 0"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+      :total-items="filteredPayments.length"
+    />
   </section>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
 import PaginationControls from '../common/PaginationControls.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 import { formatCurrency } from '../../utils/format.js';
 
 const payments = computed(() => marketStore.state.payments || []);
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const searchQuery = ref('');
 const currentPage = ref(1);
 const pageSize = 10;

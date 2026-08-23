@@ -116,11 +116,22 @@
       </article>
     </div>
 
-    <div v-if="filteredMerchants.length === 0" class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-      Aucun commerçant ne correspond aux filtres actifs.
-    </div>
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="filteredMerchants.length === 0 && !isLoading && !dataError"
+      title="Commerçants"
+      loading-message="Chargement des commerçants..."
+      error-message="Impossible de charger les commerçants."
+      empty-message="Aucun commerçant ne correspond aux filtres actifs."
+    />
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredMerchants.length" />
+    <PaginationControls
+      v-if="!isLoading && !dataError && filteredMerchants.length > 0"
+      v-model:currentPage="currentPage"
+      :page-size="pageSize"
+      :total-items="filteredMerchants.length"
+    />
 
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -181,10 +192,13 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { CreditCard, FileText, MapPin, Phone, Plus, Search } from 'lucide-vue-next';
 import PaginationControls from '../common/PaginationControls.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const merchants = computed(() => marketStore.state.merchants || []);
 const currentUser = computed(() => marketStore.state.currentUser || { role: 'SUPER_ADMIN' });
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const searchQuery = ref('');
 const statusFilter = ref('ALL');
 const currentPage = ref(1);
