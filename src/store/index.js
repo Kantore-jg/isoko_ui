@@ -158,6 +158,35 @@ function addUser(data) {
   return user;
 }
 
+function updateUser(userId, data) {
+  const nextUsers = state.users.map((user) =>
+    user.id === userId
+      ? {
+          ...user,
+          name: data.name?.trim() || user.name,
+          email: data.email?.trim() || user.email,
+          phone: data.phone?.trim() || user.phone,
+          role: data.role || user.role,
+          title: data.title?.trim() || user.title,
+        }
+      : user
+  );
+
+  state.users = nextUsers;
+  if (state.currentUser?.id === userId) {
+    state.currentUser = nextUsers.find((user) => user.id === userId) || state.currentUser;
+  }
+  persist();
+  return state.users.find((user) => user.id === userId) || null;
+}
+
+function deleteUser(userId) {
+  if (state.currentUser?.id === userId) return false;
+  state.users = state.users.filter((user) => user.id !== userId);
+  persist();
+  return true;
+}
+
 function setCurrentUser(userId) {
   const nextUser = state.users.find((user) => user.id === userId);
   if (!nextUser) return null;
@@ -655,6 +684,8 @@ export const marketStore = {
   updatePlace,
   addMerchant,
   addUser,
+  updateUser,
+  deleteUser,
   updateMerchant,
   assignPlace,
   terminateAssignment,
