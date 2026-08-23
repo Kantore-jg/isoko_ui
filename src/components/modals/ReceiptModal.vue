@@ -36,12 +36,24 @@
           </div>
           <button
             v-if="receipt.status !== 'CANCELLED' && receipt.status !== 'VOIDED'"
-            class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 hover:bg-rose-100"
+            class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="isCancelling"
             @click="cancelReceipt"
           >
-            Annuler le reçu
+            {{ isCancelling ? 'Annulation...' : 'Annuler le reçu' }}
           </button>
         </div>
+
+        <DataStatePanel
+          v-if="isCancelling"
+          :loading="true"
+          title="Annulation en cours"
+          loading-message="Le reçu est en train d’être annulé..."
+        />
+
+        <p v-else-if="actionError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+          {{ actionError }}
+        </p>
 
         <div class="overflow-hidden rounded-xl border border-slate-200">
           <table class="w-full text-left text-xs">
@@ -96,11 +108,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const receipt = computed(() => marketStore.state.selectedReceipt);
 const market = computed(() => marketStore.state.market || {});
+const isCancelling = ref(false);
+const actionError = ref('');
 
 function close() {
   marketStore.setSelectedReceipt(null);
@@ -113,7 +128,16 @@ async function cancelReceipt() {
   const reason = window.prompt(`Motif d'annulation pour ${receipt.value.receiptNumber} :`, 'Correction administrative');
   if (reason === null) return;
 
-  await marketStore.cancelReceipt(targetId, reason.trim() || 'Annulation manuelle');
-  close();
+  isCancelling.value = true;
+  actionError.value = '';
+
+  try {
+    await marketStore.cancelReceipt(targetId, reason.trim() || 'Annulation manuelle');
+    close();
+  } catch (error) {
+    actionError.value = error?.payload?.message || error?.message || 'Impossible d’annuler le reçu.';
+  } finally {
+    isCancelling.value = false;
+  }
 }
 </script>

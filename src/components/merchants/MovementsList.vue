@@ -5,22 +5,51 @@
         <h2 class="text-lg font-bold text-slate-900">Historique des mouvements & circulation</h2>
         <p class="mt-0.5 text-xs text-slate-500">Journal immuable des affectations, mutations et libérations</p>
       </div>
-      <span class="rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800">{{ filteredMovements.length }} mouvements trouvés</span>
+      <div class="flex items-center gap-2">
+        <button class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" :disabled="!filteredMovements.length" @click="downloadFilteredCsv">
+          Exporter CSV
+        </button>
+        <span class="rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800">{{ filteredMovements.length }} mouvements trouvés</span>
+      </div>
     </div>
 
-    <div class="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-      <div class="flex flex-wrap items-center gap-2">
-        <button
-          v-for="option in ['ALL', 'ENTRY', 'EXIT', 'TRANSFER']"
-          :key="option"
-          class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
-          :class="typeFilter === option ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
-          @click="typeFilter = option"
-        >
-          {{ option === 'ALL' ? `Tous (${movements.length})` : option === 'ENTRY' ? 'Entrées / Affectations' : option === 'EXIT' ? 'Sorties / Libérations' : 'Mutations / Transferts' }}
+    <div class="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div class="xl:col-span-1">
+          <label class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Type</label>
+          <select v-model="typeFilter" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:bg-white focus:outline-none">
+            <option value="ALL">Tous les types</option>
+            <option value="ENTRY">Entrées / Affectations</option>
+            <option value="EXIT">Sorties / Libérations</option>
+            <option value="TRANSFER">Mutations / Transferts</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Du</label>
+          <input v-model="dateFrom" type="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:bg-white focus:outline-none">
+        </div>
+        <div>
+          <label class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Au</label>
+          <input v-model="dateTo" type="date" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:bg-white focus:outline-none">
+        </div>
+        <div>
+          <label class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Place / commerçant</label>
+          <input v-model="searchQuery" type="text" placeholder="Nom, place, motif..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+        </div>
+        <div>
+          <label class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Opérateur</label>
+          <input v-model="operatorQuery" type="text" placeholder="Nom opérateur" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+        </div>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <p class="text-[11px] text-slate-500">
+          Les filtres s’appliquent avant la pagination et l’export.
+        </p>
+        <button class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" @click="resetFilters">
+          Réinitialiser
         </button>
       </div>
-      <input v-model="searchQuery" type="text" placeholder="Rechercher place, commerçant, motif..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 md:w-80">
     </div>
 
     <DataStatePanel
@@ -87,22 +116,43 @@ const movements = computed(() => marketStore.state.movements);
 const isLoading = computed(() => marketStore.state.isLoadingData);
 const dataError = computed(() => marketStore.state.dataError || '');
 const typeFilter = ref('ALL');
+const dateFrom = ref('');
+const dateTo = ref('');
 const searchQuery = ref('');
+const operatorQuery = ref('');
 const currentPage = ref(1);
 const pageSize = 10;
+
+function csvEscape(value) {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
+
+function downloadText(filename, content) {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 const filteredMovements = computed(() =>
   movements.value.filter((movement) => {
     const matchType = typeFilter.value === 'ALL' || movement.type === typeFilter.value;
-    const q = searchQuery.value.toLowerCase();
+    const q = searchQuery.value.trim().toLowerCase();
+    const operator = operatorQuery.value.trim().toLowerCase();
+    const afterStart = !dateFrom.value || !movement.date || movement.date >= dateFrom.value;
+    const beforeEnd = !dateTo.value || !movement.date || movement.date <= dateTo.value;
     const matchSearch =
       !q ||
       movement.placeCode.toLowerCase().includes(q) ||
       (movement.oldMerchantName && movement.oldMerchantName.toLowerCase().includes(q)) ||
       (movement.newMerchantName && movement.newMerchantName.toLowerCase().includes(q)) ||
-      movement.reason.toLowerCase().includes(q) ||
-      movement.executedBy.toLowerCase().includes(q);
-    return matchType && matchSearch;
+      movement.reason.toLowerCase().includes(q);
+    const matchOperator = !operator || movement.executedBy.toLowerCase().includes(operator);
+    return matchType && afterStart && beforeEnd && matchSearch && matchOperator;
   })
 );
 
@@ -121,4 +171,26 @@ watch(filteredMovements, () => {
     currentPage.value = totalPages;
   }
 });
+
+function resetFilters() {
+  typeFilter.value = 'ALL';
+  dateFrom.value = '';
+  dateTo.value = '';
+  searchQuery.value = '';
+  operatorQuery.value = '';
+}
+
+function downloadFilteredCsv() {
+  if (!filteredMovements.value.length) return;
+
+  const headers = ['date', 'placeCode', 'typeLabel', 'newMerchantName', 'oldMerchantName', 'reason', 'executedBy'];
+  const lines = [
+    headers.join(','),
+    ...filteredMovements.value.map((movement) =>
+      headers.map((header) => csvEscape(movement[header])).join(',')
+    ),
+  ];
+
+  downloadText(`movements-${new Date().toISOString().slice(0, 10)}.csv`, lines.join('\n'));
+}
 </script>

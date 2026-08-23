@@ -56,6 +56,16 @@
       <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
         <div class="mx-auto max-w-7xl space-y-6">
           <section v-if="currentView === 'dashboard-super'" class="space-y-6">
+            <DataStatePanel
+              :loading="state.isLoadingData"
+              :error="state.dataError"
+              :empty="!state.isLoadingData && !state.dataError && (!state.market || !state.blocks.length)"
+              title="Tableau de bord"
+              loading-message="Chargement du tableau de bord..."
+              error-message="Impossible de charger les indicateurs."
+              empty-message="Les indicateurs de synthèse ne sont pas encore disponibles."
+            />
+
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <MetricCard label="Loyers attendus" :value="money(kpis.expectedMonthly)" helper="Ce mois-ci" tone-class="bg-emerald-50 text-emerald-700">
                 <template #icon><DollarSign class="h-5 w-5" /></template>
@@ -135,7 +145,17 @@
 
           <section v-else-if="currentView === 'tools-audit'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-bold text-slate-900">Journal d’audit</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+            <DataStatePanel
+              class="mt-4"
+              :loading="state.isLoadingData"
+              :error="state.dataError"
+              :empty="!state.isLoadingData && !state.dataError && state.auditLogs.length === 0"
+              title="Audit"
+              loading-message="Chargement du journal d’audit..."
+              error-message="Impossible de charger le journal d’audit."
+              empty-message="Aucune entrée d’audit pour le moment."
+            />
+            <div v-if="!state.isLoadingData && !state.dataError && state.auditLogs.length > 0" class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
               <table class="min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
                   <tr>
@@ -213,6 +233,7 @@ import MarketSettings from './components/settings/MarketSettings.vue';
 import UsersManager from './components/users/UsersManager.vue';
 import RolesPermissionsManager from './components/admin/RolesPermissionsManager.vue';
 import Login from './components/auth/Login.vue';
+import DataStatePanel from './components/common/DataStatePanel.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes } from './config/api.js';

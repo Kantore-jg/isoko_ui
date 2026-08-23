@@ -1,5 +1,15 @@
 <template>
   <section class="space-y-6">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="!isLoading && !dataError && !blockStats.length"
+      title="Synthèse opérationnelle"
+      loading-message="Chargement des données de supervision..."
+      error-message="Impossible de charger les indicateurs d’exploitation."
+      empty-message="Les blocs et places ne sont pas encore disponibles."
+    />
+
     <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -256,10 +266,13 @@
 import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { AlertTriangle, ArrowRight, Building, CheckCircle2, MapPin, Plus, Repeat, Users } from 'lucide-vue-next';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const router = useRouter();
 const market = computed(() => marketStore.state.market || {});
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const places = computed(() => marketStore.state.places);
 const movements = computed(() => marketStore.state.movements);
 const blockStats = computed(() =>

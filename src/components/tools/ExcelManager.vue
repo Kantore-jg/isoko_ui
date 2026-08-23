@@ -30,6 +30,19 @@
     </div>
 
     <div v-if="activeTab === 'EXPORT'" class="grid gap-6 lg:grid-cols-2">
+      <div class="lg:col-span-2">
+        <DataStatePanel
+          v-if="isExporting || exportError || !hasExportableData"
+          :loading="isExporting"
+          :error="exportError"
+          :empty="!isExporting && !exportError && !hasExportableData"
+          title="Export Excel"
+          loading-message="Préparation du fichier Excel..."
+          error-message="Impossible de générer l’export."
+          empty-message="Aucune donnée n’est disponible pour l’export."
+        />
+      </div>
+
       <article class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div>
           <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
@@ -60,9 +73,9 @@
           </div>
         </div>
 
-        <button class="mt-6 flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-emerald-700" @click="downloadGlobalExport">
+        <button class="mt-6 flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-xs font-bold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isExporting || !hasExportableData" @click="downloadGlobalExport">
           <Download class="h-4 w-4" />
-          <span>Télécharger le Classeur Global (.xlsx)</span>
+          <span>{{ isExporting ? 'Préparation...' : 'Télécharger le Classeur Global (.xlsx)' }}</span>
         </button>
       </article>
 
@@ -72,7 +85,7 @@
             <h4 class="text-xs font-bold text-slate-900">Inventaire des Places & Tarifs</h4>
             <p class="mt-1 text-[11px] text-slate-500">Statuts d'occupation et loyers fixés</p>
           </div>
-          <button class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200" @click="downloadExport('places')">
+          <button class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isExporting || !hasExportableData" @click="downloadExport('places')">
             <Download class="h-3.5 w-3.5" />
             <span>Export Places</span>
           </button>
@@ -83,7 +96,7 @@
             <h4 class="text-xs font-bold text-slate-900">Fichier des Commerçants</h4>
             <p class="mt-1 text-[11px] text-slate-500">Coordonnées, CNI et affectations</p>
           </div>
-          <button class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200" @click="downloadExport('merchants')">
+          <button class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isExporting || !hasExportableData" @click="downloadExport('merchants')">
             <Download class="h-3.5 w-3.5" />
             <span>Export Commerçants</span>
           </button>
@@ -94,7 +107,7 @@
             <h4 class="text-xs font-bold text-slate-900">Journal des Encaissements & Banques</h4>
             <p class="mt-1 text-[11px] text-slate-500">Références bancaires et reçus délivrés</p>
           </div>
-          <button class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200" @click="downloadExport('payments')">
+          <button class="flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isExporting || !hasExportableData" @click="downloadExport('payments')">
             <Download class="h-3.5 w-3.5" />
             <span>Export Paiements</span>
           </button>
@@ -105,7 +118,7 @@
             <h4 class="text-xs font-bold text-rose-900">État Récapitulatif des Impayés</h4>
             <p class="mt-1 text-[11px] text-rose-600">Liste des commerçants à relancer</p>
           </div>
-          <button class="flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-rose-700" @click="downloadExport('unpaid')">
+          <button class="flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isExporting || !hasExportableData" @click="downloadExport('unpaid')">
             <Download class="h-3.5 w-3.5" />
             <span>Export Impayés</span>
           </button>
@@ -129,6 +142,17 @@
       </div>
 
       <div v-if="importStep === 1" class="space-y-4">
+        <DataStatePanel
+          v-if="isProcessing || validationError || !selectedFile"
+          :loading="isProcessing"
+          :error="validationError"
+          :empty="!isProcessing && !validationError && !selectedFile"
+          title="Import Excel"
+          loading-message="Analyse du fichier en cours..."
+          error-message="Le fichier sélectionné contient des erreurs."
+          empty-message="Choisissez un fichier .xlsx pour commencer l’import."
+        />
+
         <div v-if="validationError" class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
           {{ validationError }}
         </div>
@@ -157,8 +181,8 @@
             <p class="font-bold text-emerald-900">Template Excel administrateur</p>
             <p class="text-[11px] text-emerald-700">Téléchargez le modèle officiel avant de remplir les données.</p>
           </div>
-          <button class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-700" @click="downloadTemplate">
-            Télécharger le template
+          <button class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isDownloadingTemplate" @click="downloadTemplate">
+            {{ isDownloadingTemplate ? 'Préparation...' : 'Télécharger le template' }}
           </button>
         </div>
 
@@ -256,6 +280,7 @@ import { computed, ref } from 'vue';
 import { ArrowRight, CheckCircle2, Download, FileCheck, FileSpreadsheet, RefreshCw, UploadCloud } from 'lucide-vue-next';
 import { formatCurrency } from '../../utils/format.js';
 import { marketStore } from '../../store/index.js';
+import DataStatePanel from '../common/DataStatePanel.vue';
 
 const activeTab = ref('EXPORT');
 const importStep = ref(1);
@@ -265,11 +290,15 @@ const parsedRows = ref([]);
 const isProcessing = ref(false);
 const successCount = ref(0);
 const validationError = ref('');
+const exportError = ref('');
+const isExporting = ref(false);
+const isDownloadingTemplate = ref(false);
 
 const places = computed(() => marketStore.state.places || []);
 const merchants = computed(() => marketStore.state.merchants || []);
 const payments = computed(() => marketStore.state.payments || []);
 const obligations = computed(() => marketStore.state.obligations || []);
+const hasExportableData = computed(() => places.value.length > 0 || merchants.value.length > 0 || payments.value.length > 0 || obligations.value.length > 0);
 
 const steps = [
   { n: 1, label: '1. Fichier' },
@@ -317,16 +346,41 @@ function rowsToCsv(rows) {
 }
 
 function downloadExport(type) {
-  const scope = type === 'payments' || type === 'unpaid' ? 'finance' : type === 'merchants' ? 'all' : 'structure';
-  return marketStore.exportExcel(scope);
+  const scope =
+    type === 'all'
+      ? 'all'
+      : type === 'payments' || type === 'unpaid'
+        ? 'finance'
+        : type === 'merchants'
+          ? 'all'
+          : 'structure';
+  isExporting.value = true;
+  exportError.value = '';
+  return marketStore.exportExcel(scope)
+    .catch((error) => {
+      exportError.value = error?.message || 'Export impossible.';
+      throw error;
+    })
+    .finally(() => {
+      isExporting.value = false;
+    });
 }
 
 function downloadGlobalExport() {
-  return marketStore.exportExcel('all');
+  return downloadExport('all');
 }
 
 function downloadTemplate() {
-  return marketStore.downloadTemplate(importScope.value);
+  isDownloadingTemplate.value = true;
+  exportError.value = '';
+  return marketStore.downloadTemplate(importScope.value)
+    .catch((error) => {
+      exportError.value = error?.message || 'Téléchargement du template impossible.';
+      throw error;
+    })
+    .finally(() => {
+      isDownloadingTemplate.value = false;
+    });
 }
 
 function resetImport() {
@@ -351,6 +405,7 @@ function onFilePicked(event) {
 
   selectedFile.value = file;
   validationError.value = '';
+  exportError.value = '';
 
   // Fallback frontend preview: we keep the wizard structure even without xlsx parsing.
   parsedRows.value = [

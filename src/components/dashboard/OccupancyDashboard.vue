@@ -1,5 +1,15 @@
 <template>
   <section class="space-y-6">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="!isLoading && !dataError && !blockStats.length"
+      title="Vue d’occupation"
+      loading-message="Chargement de la vue d’occupation..."
+      error-message="Impossible de charger la vue d’occupation."
+      empty-message="Aucune place n’est encore disponible pour l’affichage."
+    />
+
     <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -413,9 +423,12 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { CreditCard, Grid, History, LogOut, Repeat, Search, User } from 'lucide-vue-next';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const router = useRouter();
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const currentUser = computed(() => marketStore.state.currentUser || { role: 'SUPER_ADMIN' });
 const places = computed(() => marketStore.state.places || []);
 const obligations = computed(() => marketStore.state.obligations || []);

@@ -61,11 +61,22 @@ export async function apiRequest(path, options = {}) {
       return null;
     }
 
-    if (contentType.includes('application/json')) {
-      const attempts = [raw, raw.trim()];
+    const looksLikeJson = raw.trim().startsWith('{') || raw.trim().startsWith('[');
+
+    if (contentType.includes('application/json') || looksLikeJson) {
+      const trimmed = raw.trim();
+      const attempts = [trimmed, raw];
       const openingIndex = raw.search(/[\[{]/);
-      if (openingIndex > 0) {
+      const closingObjectIndex = raw.lastIndexOf('}');
+      const closingArrayIndex = raw.lastIndexOf(']');
+
+      if (openingIndex >= 0) {
         attempts.push(raw.slice(openingIndex).trim());
+
+        const closingIndex = Math.max(closingObjectIndex, closingArrayIndex);
+        if (closingIndex > openingIndex) {
+          attempts.push(raw.slice(openingIndex, closingIndex + 1).trim());
+        }
       }
 
       for (const candidate of attempts) {

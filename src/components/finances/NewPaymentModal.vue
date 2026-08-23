@@ -9,90 +9,115 @@
         <button class="rounded-lg p-1 text-emerald-100 hover:bg-emerald-800 hover:text-white" @click="close">X</button>
       </div>
 
-      <form class="space-y-4 p-6 text-xs" @submit.prevent="submit">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Commerçant *</span>
-            <select v-model="form.merchantId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
-              <option v-for="merchant in activeMerchants" :key="merchant.id" :value="merchant.id">
-                {{ merchant.name }}
-              </option>
-            </select>
-          </label>
+      <div class="space-y-4 p-6 text-xs">
+        <DataStatePanel
+          v-if="isLoadingData"
+          :loading="true"
+          title="Préparation du paiement"
+          loading-message="Chargement des commerçants, places et banques..."
+        />
+
+        <DataStatePanel
+          v-else-if="!hasReferenceData"
+          :empty="true"
+          title="Référentiel incomplet"
+          empty-message="Ajoutez au moins un commerçant actif, une place occupée et une banque avant d’encaisser un loyer."
+        />
+
+        <form v-else class="space-y-4" @submit.prevent="submit">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Commerçant *</span>
+              <select v-model="form.merchantId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+                <option v-for="merchant in activeMerchants" :key="merchant.id" :value="merchant.id">
+                  {{ merchant.name }}
+                </option>
+              </select>
+            </label>
+
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Place *</span>
+              <select v-model="form.placeId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+                <option v-for="place in occupiedPlaces" :key="place.id" :value="place.id">
+                  {{ place.code }} - {{ place.blockCode }}
+                </option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Mois *</span>
+              <select v-model.number="form.periodMonth" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none">
+                <option v-for="month in months" :key="month.num" :value="month.num">{{ month.name }}</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Année *</span>
+              <input v-model.number="form.periodYear" type="number" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Montant *</span>
+              <input v-model.number="form.amount" type="number" min="1" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-semibold focus:bg-white focus:outline-none" required>
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Banque *</span>
+              <select v-model="form.bankId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+                <option v-for="bank in banks" :key="bank.id" :value="bank.id">{{ bank.name }}</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Référence *</span>
+              <input v-model="form.referenceNumber" type="text" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono focus:bg-white focus:outline-none" required>
+            </label>
+            <label class="block">
+              <span class="mb-1 block font-semibold text-slate-700">Date de paiement *</span>
+              <input v-model="form.paymentDate" type="date" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+            </label>
+          </div>
 
           <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Place *</span>
-            <select v-model="form.placeId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
-              <option v-for="place in occupiedPlaces" :key="place.id" :value="place.id">
-                {{ place.code }} - {{ place.blockCode }}
-              </option>
-            </select>
+            <span class="mb-1 block font-semibold text-slate-700">Notes</span>
+            <textarea v-model="form.notes" rows="3" class="w-full resize-none rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none"></textarea>
           </label>
-        </div>
 
-        <div class="grid grid-cols-2 gap-4">
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Mois *</span>
-            <select v-model.number="form.periodMonth" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none">
-              <option v-for="month in months" :key="month.num" :value="month.num">{{ month.name }}</option>
-            </select>
-          </label>
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Année *</span>
-            <input v-model.number="form.periodYear" type="number" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
-          </label>
-        </div>
+          <p v-if="formError" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            {{ formError }}
+          </p>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Montant *</span>
-            <input v-model.number="form.amount" type="number" min="1" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-semibold focus:bg-white focus:outline-none" required>
-          </label>
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Banque *</span>
-            <select v-model="form.bankId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
-              <option v-for="bank in banks" :key="bank.id" :value="bank.id">{{ bank.name }}</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Référence *</span>
-            <input v-model="form.referenceNumber" type="text" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono focus:bg-white focus:outline-none" required>
-          </label>
-          <label class="block">
-            <span class="mb-1 block font-semibold text-slate-700">Date de paiement *</span>
-            <input v-model="form.paymentDate" type="date" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
-          </label>
-        </div>
-
-        <label class="block">
-          <span class="mb-1 block font-semibold text-slate-700">Notes</span>
-          <textarea v-model="form.notes" rows="3" class="w-full resize-none rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" />
-        </label>
-
-        <div class="flex justify-end gap-2 border-t border-slate-200 pt-3">
-          <button type="button" class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50" @click="close">
-            Annuler
-          </button>
-          <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700">
-            Enregistrer le paiement
-          </button>
-        </div>
-      </form>
+          <div class="flex justify-end gap-2 border-t border-slate-200 pt-3">
+            <button type="button" class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50" @click="close">
+              Annuler
+            </button>
+            <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60" :disabled="isSubmitting">
+              {{ isSubmitting ? 'Enregistrement...' : 'Enregistrer le paiement' }}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
 const isOpen = computed(() => marketStore.state.isNewPaymentModalOpen);
+const isLoadingData = computed(() => marketStore.state.isLoadingData);
 const activeMerchants = computed(() => marketStore.state.merchants.filter((merchant) => merchant.status === 'ACTIVE' && merchant.currentPlaceId));
 const occupiedPlaces = computed(() => marketStore.state.places.filter((place) => place.status === 'OCCUPIED'));
 const banks = computed(() => marketStore.state.banks);
+const hasReferenceData = computed(() => activeMerchants.value.length > 0 && occupiedPlaces.value.length > 0 && banks.value.length > 0);
+const isSubmitting = ref(false);
+const formError = ref('');
 
 const months = [
   { num: 1, name: 'Janvier' },
@@ -131,6 +156,7 @@ function seedForm() {
   form.amount = place?.rentPrice || 50000;
   form.bankId = bank?.id || '';
   form.referenceNumber = `${prefix}-2026-${String(marketStore.state.payments.length + 146).padStart(6, '0')}`;
+  formError.value = '';
 }
 
 watch(
@@ -142,10 +168,22 @@ watch(
 );
 
 async function submit() {
-  await marketStore.recordPayment({ ...form });
+  isSubmitting.value = true;
+  formError.value = '';
+
+  try {
+    await marketStore.recordPayment({ ...form });
+    close();
+  } catch (error) {
+    formError.value = error?.payload?.message || error?.message || 'Impossible d’enregistrer le paiement.';
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 
 function close() {
   marketStore.setIsNewPaymentModalOpen(false);
+  formError.value = '';
+  isSubmitting.value = false;
 }
 </script>

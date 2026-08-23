@@ -1,5 +1,15 @@
 <template>
   <section class="space-y-6">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="!isLoading && !dataError && !payments.length && !banks.length"
+      title="Synthèse comptable"
+      loading-message="Chargement des indicateurs comptables..."
+      error-message="Impossible de charger les indicateurs comptables."
+      empty-message="Les données comptables ne sont pas encore disponibles."
+    />
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <MetricCard
         label="CA Encaissé (Ce Mois)"
@@ -183,12 +193,15 @@ import {
   Search,
 } from 'lucide-vue-next';
 import MetricCard from '../common/MetricCard.vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 import { formatCurrency } from '../../utils/format.js';
 
 const router = useRouter();
 const kpis = marketStore.kpis;
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const payments = computed(() => marketStore.state.payments || []);
 const banks = computed(() => marketStore.state.banks || []);
 const obligations = computed(() => marketStore.state.obligations || []);
