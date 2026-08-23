@@ -14,7 +14,7 @@
     </div>
 
     <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <article v-for="bank in banks" :key="bank.id" class="rounded-2xl border border-slate-200 p-4">
+      <article v-for="bank in paginatedBanks" :key="bank.id" class="rounded-2xl border border-slate-200 p-4">
         <div class="flex items-start justify-between gap-2">
           <div>
             <h3 class="text-sm font-bold text-slate-900">{{ bank.code }}</h3>
@@ -36,6 +36,8 @@
         </div>
       </article>
     </div>
+
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="banks.length" />
 
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -89,10 +91,13 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
-const banks = marketStore.state.banks;
+const banks = computed(() => marketStore.state.banks || []);
+const currentPage = ref(1);
+const pageSize = 6;
 const isOpen = ref(false);
 const editingBank = ref(null);
 const form = reactive({
@@ -111,6 +116,11 @@ function resetForm(bank = null) {
   form.branch = bank?.branch || '';
   form.isActive = bank?.isActive ?? true;
 }
+
+const paginatedBanks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return banks.value.slice(start, start + pageSize);
+});
 
 function openCreate() {
   resetForm();
@@ -144,4 +154,11 @@ function close() {
   isOpen.value = false;
   editingBank.value = null;
 }
+
+watch(banks, () => {
+  const totalPages = Math.max(1, Math.ceil(banks.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>

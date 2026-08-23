@@ -46,7 +46,7 @@
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <article
-        v-for="merchant in filteredMerchants"
+        v-for="merchant in paginatedMerchants"
         :key="merchant.id"
         class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300"
       >
@@ -120,6 +120,8 @@
       Aucun commerçant ne correspond aux filtres actifs.
     </div>
 
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredMerchants.length" />
+
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <h3 class="mb-4 text-sm font-bold text-slate-900">
@@ -176,14 +178,17 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { CreditCard, FileText, MapPin, Phone, Plus, Search } from 'lucide-vue-next';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
 const merchants = computed(() => marketStore.state.merchants || []);
 const currentUser = computed(() => marketStore.state.currentUser || { role: 'SUPER_ADMIN' });
 const searchQuery = ref('');
 const statusFilter = ref('ALL');
+const currentPage = ref(1);
+const pageSize = 6;
 const isOpen = ref(false);
 const editingMerchant = ref(null);
 
@@ -209,6 +214,11 @@ const filteredMerchants = computed(() => {
         .some((value) => String(value).toLowerCase().includes(query));
     return matchStatus && matchSearch;
   });
+});
+
+const paginatedMerchants = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredMerchants.value.slice(start, start + pageSize);
 });
 
 const statusOptions = computed(() => [
@@ -273,4 +283,15 @@ function close() {
   isOpen.value = false;
   editingMerchant.value = null;
 }
+
+watch([searchQuery, statusFilter], () => {
+  currentPage.value = 1;
+});
+
+watch(filteredMerchants, () => {
+  const totalPages = Math.max(1, Math.ceil(filteredMerchants.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>

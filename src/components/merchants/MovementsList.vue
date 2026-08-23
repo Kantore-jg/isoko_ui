@@ -5,7 +5,7 @@
         <h2 class="text-lg font-bold text-slate-900">Historique des mouvements & circulation</h2>
         <p class="mt-0.5 text-xs text-slate-500">Journal immuable des affectations, mutations et libérations</p>
       </div>
-      <span class="rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800">{{ movements.length }} mouvements enregistrés</span>
+      <span class="rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800">{{ filteredMovements.length }} mouvements trouvés</span>
     </div>
 
     <div class="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
@@ -37,7 +37,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="movement in filteredMovements" :key="movement.id" class="hover:bg-slate-50/80">
+            <tr v-for="movement in paginatedMovements" :key="movement.id" class="hover:bg-slate-50/80">
               <td class="px-4 py-3 font-mono text-slate-600">{{ movement.date }}</td>
               <td class="px-4 py-3 font-mono font-bold text-slate-900">{{ movement.placeCode }}</td>
               <td class="px-4 py-3">
@@ -57,16 +57,21 @@
         </table>
       </div>
     </div>
+
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredMovements.length" />
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
 const movements = computed(() => marketStore.state.movements);
 const typeFilter = ref('ALL');
 const searchQuery = ref('');
+const currentPage = ref(1);
+const pageSize = 10;
 
 const filteredMovements = computed(() =>
   movements.value.filter((movement) => {
@@ -82,4 +87,20 @@ const filteredMovements = computed(() =>
     return matchType && matchSearch;
   })
 );
+
+const paginatedMovements = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredMovements.value.slice(start, start + pageSize);
+});
+
+watch([typeFilter, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(filteredMovements, () => {
+  const totalPages = Math.max(1, Math.ceil(filteredMovements.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>

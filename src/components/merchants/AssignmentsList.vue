@@ -43,7 +43,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="assignment in filteredAssignments" :key="assignment.id" class="hover:bg-slate-50/80">
+            <tr v-for="assignment in paginatedAssignments" :key="assignment.id" class="hover:bg-slate-50/80">
               <td class="px-4 py-3 font-mono font-bold text-slate-900">{{ assignment.placeCode }}</td>
               <td class="px-4 py-3 font-semibold text-slate-900">{{ assignment.merchantName }}</td>
               <td class="px-4 py-3 font-mono text-slate-600">{{ assignment.startDate }}</td>
@@ -60,16 +60,21 @@
         </table>
       </div>
     </div>
+
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredAssignments.length" />
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
 const assignments = computed(() => marketStore.state.assignments);
 const statusFilter = ref('ALL');
 const searchQuery = ref('');
+const currentPage = ref(1);
+const pageSize = 10;
 
 const filteredAssignments = computed(() =>
   assignments.value.filter((assignment) => {
@@ -84,6 +89,22 @@ const filteredAssignments = computed(() =>
   })
 );
 
+const paginatedAssignments = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredAssignments.value.slice(start, start + pageSize);
+});
+
 const activeCount = computed(() => assignments.value.filter((assignment) => assignment.status === 'ACTIVE').length);
 const endedCount = computed(() => assignments.value.filter((assignment) => assignment.status === 'ENDED').length);
+
+watch([statusFilter, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(filteredAssignments, () => {
+  const totalPages = Math.max(1, Math.ceil(filteredAssignments.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>

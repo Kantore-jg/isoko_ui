@@ -124,7 +124,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-50">
-            <tr v-for="payment in filteredPayments" :key="payment.id" class="transition-colors hover:bg-slate-50">
+            <tr v-for="payment in paginatedPayments" :key="payment.id" class="transition-colors hover:bg-slate-50">
               <td class="p-3">
                 <span class="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-900">
                   {{ payment.referenceNumber }}
@@ -163,12 +163,14 @@
           </tbody>
         </table>
       </div>
+
+      <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredPayments.length" />
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   AlertCircle,
@@ -181,6 +183,7 @@ import {
   Search,
 } from 'lucide-vue-next';
 import MetricCard from '../common/MetricCard.vue';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 import { formatCurrency } from '../../utils/format.js';
 
@@ -192,6 +195,8 @@ const obligations = computed(() => marketStore.state.obligations || []);
 
 const bankFilter = ref('ALL');
 const searchRef = ref('');
+const currentPage = ref(1);
+const pageSize = 10;
 
 const filteredPayments = computed(() => {
   const query = searchRef.value.trim().toLowerCase();
@@ -204,6 +209,11 @@ const filteredPayments = computed(() => {
         .some((value) => String(value).toLowerCase().includes(query));
     return matchBank && matchSearch;
   });
+});
+
+const paginatedPayments = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredPayments.value.slice(start, start + pageSize);
 });
 
 const overdueCount = computed(() => obligations.value.filter((obligation) => obligation.status === 'OVERDUE').length);
@@ -220,4 +230,15 @@ function moneyMillions(value) {
 function navigate(path) {
   router.push(path);
 }
+
+watch([bankFilter, searchRef], () => {
+  currentPage.value = 1;
+});
+
+watch(filteredPayments, () => {
+  const totalPages = Math.max(1, Math.ceil(filteredPayments.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>

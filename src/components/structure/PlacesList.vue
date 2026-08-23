@@ -53,7 +53,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="place in filteredPlaces" :key="place.id" class="transition-colors hover:bg-slate-50/80">
+            <tr v-for="place in paginatedPlaces" :key="place.id" class="transition-colors hover:bg-slate-50/80">
               <td class="px-4 py-3 font-mono text-sm font-bold text-slate-900">{{ place.code }}</td>
               <td class="px-4 py-3 font-semibold text-slate-700">{{ place.blockCode }}</td>
               <td class="px-4 py-3">
@@ -84,6 +84,8 @@
         </table>
       </div>
     </div>
+
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredPlaces.length" />
 
     <div v-if="isCreateOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -223,6 +225,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
 const blocks = computed(() => marketStore.state.blocks);
@@ -233,6 +236,8 @@ const activeMerchants = computed(() => marketStore.state.merchants.filter((merch
 const selectedBlock = ref('ALL');
 const selectedStatus = ref('ALL');
 const searchQuery = ref('');
+const currentPage = ref(1);
+const pageSize = 10;
 const isCreateOpen = ref(false);
 const editingPlace = ref(null);
 const assignTarget = ref(null);
@@ -281,6 +286,11 @@ const filteredPlaces = computed(() =>
     return matchBlock && matchStatus && matchSearch;
   })
 );
+
+const paginatedPlaces = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredPlaces.value.slice(start, start + pageSize);
+});
 
 const availableTransferTargets = computed(() =>
   places.value.filter((place) => place.status === 'AVAILABLE' && place.id !== transferTarget.value?.id)
@@ -411,4 +421,15 @@ watch(
   },
   { immediate: true }
 );
+
+watch([selectedBlock, selectedStatus, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(filteredPlaces, () => {
+  const totalPages = Math.max(1, Math.ceil(filteredPlaces.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>

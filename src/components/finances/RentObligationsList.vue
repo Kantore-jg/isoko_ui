@@ -57,7 +57,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="obligation in filteredObligations" :key="obligation.id" class="hover:bg-slate-50/80">
+            <tr v-for="obligation in paginatedObligations" :key="obligation.id" class="hover:bg-slate-50/80">
               <td class="px-4 py-3 font-bold text-slate-900">{{ obligation.periodLabel }}</td>
               <td class="px-4 py-3 font-mono font-bold text-slate-900">{{ obligation.placeCode }}</td>
               <td class="px-4 py-3 font-semibold text-slate-800">{{ obligation.merchantName }}</td>
@@ -75,17 +75,22 @@
         </table>
       </div>
     </div>
+
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredObligations.length" />
   </section>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
 const obligations = computed(() => marketStore.state.obligations);
 const statusFilter = ref('ALL');
 const monthFilter = ref('ALL');
 const searchQuery = ref('');
+const currentPage = ref(1);
+const pageSize = 10;
 
 const months = [
   { num: 1, name: 'Janvier' },
@@ -112,8 +117,24 @@ const filteredObligations = computed(() =>
   })
 );
 
+const paginatedObligations = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return filteredObligations.value.slice(start, start + pageSize);
+});
+
 const totalDue = computed(() =>
   filteredObligations.value.filter((item) => item.status !== 'PAID').reduce((sum, item) => sum + item.balance, 0)
 );
 const totalPaid = computed(() => filteredObligations.value.reduce((sum, item) => sum + item.amountPaid, 0));
+
+watch([statusFilter, monthFilter, searchQuery], () => {
+  currentPage.value = 1;
+});
+
+watch(filteredObligations, () => {
+  const totalPages = Math.max(1, Math.ceil(filteredObligations.value.length / pageSize));
+  if (currentPage.value > totalPages) {
+    currentPage.value = totalPages;
+  }
+});
 </script>
