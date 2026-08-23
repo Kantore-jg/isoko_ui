@@ -29,13 +29,20 @@
           <p>{{ bank.branch || 'Agence non précisée' }}</p>
           <p>{{ bank.totalCollected.toLocaleString() }} FBu</p>
         </div>
-        <div class="mt-4 flex justify-end">
+        <div class="mt-4 flex justify-end gap-3">
           <button class="text-xs font-semibold text-emerald-700 hover:underline" @click="openEdit(bank)">
             Modifier
+          </button>
+          <button class="text-xs font-semibold text-rose-700 hover:underline" @click="removeBank(bank)">
+            Supprimer
           </button>
         </div>
       </article>
     </div>
+
+    <p v-if="formError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+      {{ formError }}
+    </p>
 
     <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="banks.length" />
 
@@ -100,6 +107,7 @@ const currentPage = ref(1);
 const pageSize = 6;
 const isOpen = ref(false);
 const editingBank = ref(null);
+const formError = ref('');
 const form = reactive({
   code: '',
   name: '',
@@ -115,6 +123,7 @@ function resetForm(bank = null) {
   form.accountNumber = bank?.accountNumber || '';
   form.branch = bank?.branch || '';
   form.isActive = bank?.isActive ?? true;
+  formError.value = '';
 }
 
 const paginatedBanks = computed(() => {
@@ -132,7 +141,7 @@ function openEdit(bank) {
   isOpen.value = true;
 }
 
-function save() {
+async function save() {
   const payload = {
     code: form.code.trim(),
     name: form.name.trim(),
@@ -141,18 +150,33 @@ function save() {
     isActive: Boolean(form.isActive),
   };
 
-  if (editingBank.value) {
-    marketStore.updateBank(editingBank.value.id, payload);
-  } else {
-    marketStore.addBank(payload);
+  try {
+    if (editingBank.value) {
+      await marketStore.updateBank(editingBank.value.id, payload);
+    } else {
+      await marketStore.addBank(payload);
+    }
+    close();
+  } catch (error) {
+    formError.value = error?.payload?.message || error?.message || 'Impossible d’enregistrer la banque.';
   }
-
-  close();
 }
 
 function close() {
   isOpen.value = false;
   editingBank.value = null;
+  formError.value = '';
+}
+
+async function removeBank(bank) {
+  const confirmed = window.confirm(`Supprimer la banque ${bank.name} ?`);
+  if (!confirmed) return;
+
+  try {
+    await marketStore.deleteBank(bank.id);
+  } catch (error) {
+    formError.value = error?.payload?.message || error?.message || 'Impossible de supprimer la banque.';
+  }
 }
 
 watch(banks, () => {

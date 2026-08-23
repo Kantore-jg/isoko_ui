@@ -125,11 +125,12 @@ function seedForm() {
   const merchant = activeMerchants.value[0];
   const place = occupiedPlaces.value[0];
   const bank = banks.value[0];
+  const prefix = marketStore.state.market?.receiptPrefix || 'REC';
   form.merchantId = merchant?.id || '';
   form.placeId = place?.id || '';
   form.amount = place?.rentPrice || 50000;
   form.bankId = bank?.id || '';
-  form.referenceNumber = `REC-2026-${String(marketStore.state.payments.length + 146).padStart(6, '0')}`;
+  form.referenceNumber = `${prefix}-2026-${String(marketStore.state.payments.length + 146).padStart(6, '0')}`;
 }
 
 watch(

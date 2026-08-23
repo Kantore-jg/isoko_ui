@@ -129,6 +129,9 @@
       </div>
 
       <div v-if="importStep === 1" class="space-y-4">
+        <div v-if="validationError" class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+          {{ validationError }}
+        </div>
         <div>
           <p class="mb-2 text-xs font-bold text-slate-800">Type de Données à Importer :</p>
           <div class="grid gap-3 md:grid-cols-2">
@@ -222,6 +225,10 @@
             <span>{{ isProcessing ? 'Traitement...' : 'Exécuter l’import' }}</span>
           </button>
         </div>
+
+        <div v-if="validationError" class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+          {{ validationError }}
+        </div>
       </div>
 
       <div v-else class="space-y-4">
@@ -257,6 +264,7 @@ const selectedFile = ref(null);
 const parsedRows = ref([]);
 const isProcessing = ref(false);
 const successCount = ref(0);
+const validationError = ref('');
 
 const places = computed(() => marketStore.state.places || []);
 const merchants = computed(() => marketStore.state.merchants || []);
@@ -327,13 +335,22 @@ function resetImport() {
   isProcessing.value = false;
   successCount.value = 0;
   selectedFile.value = null;
+  validationError.value = '';
 }
 
 function onFilePicked(event) {
   const file = event.target.files?.[0];
   if (!file) return;
 
+  if (!String(file.name || '').toLowerCase().endsWith('.xlsx')) {
+    validationError.value = 'Veuillez sélectionner un fichier Excel au format .xlsx.';
+    selectedFile.value = null;
+    parsedRows.value = [];
+    return;
+  }
+
   selectedFile.value = file;
+  validationError.value = '';
 
   // Fallback frontend preview: we keep the wizard structure even without xlsx parsing.
   parsedRows.value = [
@@ -346,10 +363,20 @@ function onFilePicked(event) {
 
 async function executeImport() {
   isProcessing.value = true;
+  validationError.value = '';
   try {
     const response = await marketStore.importExcel(selectedFile.value, importScope.value);
     successCount.value = response?.data?.summary?.successful_rows ?? 0;
     importStep.value = 4;
+  } catch (error) {
+    const backendErrors = error?.payload?.errors;
+    if (backendErrors && typeof backendErrors === 'object') {
+      validationError.value = Object.entries(backendErrors)
+        .flatMap(([field, messages]) => messages.map((message) => `${field}: ${message}`))
+        .join(' | ');
+    } else {
+      validationError.value = error?.message || 'Import impossible.';
+    }
   } finally {
     isProcessing.value = false;
   }

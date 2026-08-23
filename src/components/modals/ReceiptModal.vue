@@ -23,8 +23,24 @@
           </div>
           <div class="text-right">
             <p class="text-[11px] font-semibold uppercase text-slate-400">Référence</p>
-            <p class="text-sm font-mono font-bold text-slate-900">{{ receipt.referenceNumber }}</p>
+            <p class="text-sm font-mono font-bold text-slate-900">{{ receipt.referenceNumber || receipt.receiptNumber }}</p>
           </div>
+        </div>
+
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 text-xs">
+          <div>
+            <p class="text-[11px] font-semibold uppercase text-slate-400">Statut</p>
+            <p class="font-bold" :class="receipt.status === 'CANCELLED' || receipt.status === 'VOIDED' ? 'text-rose-700' : 'text-emerald-700'">
+              {{ receipt.status === 'CANCELLED' ? 'Annulé' : receipt.status === 'VOIDED' ? 'Paiement annulé' : 'Valide' }}
+            </p>
+          </div>
+          <button
+            v-if="receipt.status !== 'CANCELLED' && receipt.status !== 'VOIDED'"
+            class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 hover:bg-rose-100"
+            @click="cancelReceipt"
+          >
+            Annuler le reçu
+          </button>
         </div>
 
         <div class="overflow-hidden rounded-xl border border-slate-200">
@@ -40,9 +56,9 @@
             <tbody class="divide-y divide-slate-100">
               <tr>
                 <td class="px-4 py-3.5 font-bold text-slate-900">{{ receipt.merchantName }}</td>
-                <td class="px-4 py-3.5">{{ receipt.placeCode }} ({{ receipt.blockCode }})</td>
+                <td class="px-4 py-3.5">{{ receipt.placeCode }} {{ receipt.blockCode ? `(${receipt.blockCode})` : '' }}</td>
                 <td class="px-4 py-3.5">{{ receipt.periodLabel }}</td>
-                <td class="px-4 py-3.5 text-right font-bold text-slate-900">{{ receipt.amount.toLocaleString() }} FBu</td>
+                <td class="px-4 py-3.5 text-right font-bold text-slate-900">{{ Number(receipt.amount || 0).toLocaleString() }} FBu</td>
               </tr>
             </tbody>
           </table>
@@ -50,7 +66,7 @@
 
         <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
           <p class="text-xs font-bold text-emerald-950">TOTAL ENCAISSÉ</p>
-          <p class="text-xl font-extrabold text-emerald-700">{{ receipt.amount.toLocaleString() }} FBu</p>
+          <p class="text-xl font-extrabold text-emerald-700">{{ Number(receipt.amount || 0).toLocaleString() }} FBu</p>
         </div>
 
         <p v-if="receipt.notes" class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
@@ -60,12 +76,12 @@
         <div class="grid grid-cols-2 gap-8 border-t border-slate-200 pt-4 text-xs">
           <div>
             <p class="text-[11px] font-semibold uppercase text-slate-500">Enregistré par</p>
-            <p class="mt-1 font-bold text-slate-800">{{ receipt.recordedBy }}</p>
-            <p class="text-[11px] text-slate-500">{{ receipt.recordedByRole }}</p>
+            <p class="mt-1 font-bold text-slate-800">{{ receipt.recordedBy || receipt.issuedBy }}</p>
+            <p class="text-[11px] text-slate-500">{{ receipt.recordedByRole || receipt.status }}</p>
           </div>
           <div class="text-right">
             <p class="text-[11px] font-semibold uppercase text-slate-500">Horodatage</p>
-            <p class="mt-1 font-mono text-[11px] text-slate-500">{{ receipt.createdAt }}</p>
+            <p class="mt-1 font-mono text-[11px] text-slate-500">{{ receipt.createdAt || receipt.receiptDate || receipt.paymentDate }}</p>
           </div>
         </div>
       </div>
@@ -88,5 +104,16 @@ const market = computed(() => marketStore.state.market || {});
 
 function close() {
   marketStore.setSelectedReceipt(null);
+}
+
+async function cancelReceipt() {
+  const targetId = receipt.value?.receiptId || receipt.value?.id;
+  if (!targetId) return;
+
+  const reason = window.prompt(`Motif d'annulation pour ${receipt.value.receiptNumber} :`, 'Correction administrative');
+  if (reason === null) return;
+
+  await marketStore.cancelReceipt(targetId, reason.trim() || 'Annulation manuelle');
+  close();
 }
 </script>

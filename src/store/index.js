@@ -9,19 +9,31 @@ import {
 } from '../config/api.js';
 import { downloadBlob, getStoredToken, setStoredToken } from '../services/apiClient.js';
 import {
+  createBankApi,
   createMerchantApi,
   createAssignmentApi,
   createBlockApi,
+  createPermissionApi,
   createPaymentApi,
   createPlaceApi,
+  createRoleApi,
+  createUserApi,
   dashboardSummaryApi,
+  deleteBankApi,
   deleteBlockApi,
   deleteMerchantApi,
   deletePlaceApi,
+  deleteUserApi,
+  deletePermissionApi,
+  deleteRoleApi,
   listApi,
+  listBanksApi,
   listMerchantsApi,
+  listPermissionsApi,
   listPaymentsApi,
   listReceiptsApi,
+  listRolesApi,
+  listUsersApi,
   loginApi,
   logoutApi,
   meApi,
@@ -32,9 +44,13 @@ import {
   terminateAssignmentApi,
   settingsApi,
   updateSettingsApi,
+  updateBankApi,
   updateBlockApi,
   updateMerchantApi,
   updatePlaceApi,
+  updatePermissionApi,
+  updateRoleApi,
+  updateUserApi,
   voidPaymentApi,
 } from '../services/marketApi.js';
 import {
@@ -49,7 +65,9 @@ import {
   mapObligation,
   mapPayment,
   mapPlace,
+  mapPermission,
   mapReceipt,
+  mapRole,
 } from '../services/apiMappers.js';
 
 const monthNames = getMonthNames();
@@ -62,6 +80,8 @@ const state = reactive({
   dashboardSummary: null,
   settings: [],
   users: [],
+  roles: [],
+  permissions: [],
   blocks: [],
   places: [],
   merchants: [],
@@ -92,6 +112,8 @@ function snapshotState() {
     dashboardSummary: state.dashboardSummary,
     settings: state.settings,
     users: state.users,
+    roles: state.roles,
+    permissions: state.permissions,
     blocks: state.blocks,
     places: state.places,
     merchants: state.merchants,
@@ -123,6 +145,8 @@ function applyApiState(payload) {
   state.dashboardSummary = payload.dashboardSummary || null;
   state.settings = payload.settings || [];
   state.users = payload.users || [];
+  state.roles = payload.roles || [];
+  state.permissions = payload.permissions || [];
   state.blocks = payload.blocks || [];
   state.places = payload.places || [];
   state.merchants = payload.merchants || [];
@@ -163,6 +187,8 @@ async function loadBootstrapData(options = {}) {
     paymentsResponse,
     receiptsResponse,
     usersResponse,
+    rolesResponse,
+    permissionsResponse,
     auditLogsResponse,
   ] = await Promise.all([
     options.currentUser ? Promise.resolve({ user: options.currentUser }) : meApi(),
@@ -174,10 +200,12 @@ async function loadBootstrapData(options = {}) {
     safe(() => listApi('assignments', { per_page: 1000 }), { data: [] }),
     safe(() => listApi('movements', { per_page: 1000 }), { data: [] }),
     safe(() => listApi('rent-obligations', { per_page: 1000 }), { data: [] }),
-    safe(() => listApi('banks', { per_page: 1000 }), { data: [] }),
+    safe(() => listBanksApi({ per_page: 1000 }), { data: [] }),
     safe(() => listPaymentsApi({ per_page: 1000 }), { data: [] }),
     safe(() => listReceiptsApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listApi('users', { per_page: 1000 }), { data: [] }),
+    safe(() => listUsersApi({ per_page: 1000 }), { data: [] }),
+    safe(() => listRolesApi({ per_page: 1000 }), { data: [] }),
+    safe(() => listPermissionsApi({ per_page: 1000 }), { data: [] }),
     safe(() => listApi('audit-logs', { per_page: 1000 }), { data: [] }),
   ]);
 
@@ -190,6 +218,8 @@ async function loadBootstrapData(options = {}) {
   const obligations = (obligationsResponse.data || []).map(mapObligation);
   const movements = (movementsResponse.data || []).map(mapMovement);
   const users = (usersResponse.data || []).map(mapCurrentUser);
+  const roles = (rolesResponse.data || []).map(mapRole);
+  const permissions = (permissionsResponse.data || []).map(mapPermission);
   const auditLogs = (auditLogsResponse.data || []).map(mapAuditLog);
   const balanceDueByMerchant = obligations.reduce((accumulator, obligation) => {
     const key = String(obligation.merchantId || '');
@@ -260,6 +290,8 @@ async function loadBootstrapData(options = {}) {
     dashboardSummary: summaryResponse.summary || null,
     settings: settingsResponse.settings || [],
     users,
+    roles,
+    permissions,
     blocks: (blocksResponse.data || []).map(mapBlock),
     places: placesWithAssignments,
     merchants: merchantsWithTotals,
@@ -332,6 +364,8 @@ async function logout() {
   state.dashboardSummary = null;
   state.settings = [];
   state.users = [];
+  state.roles = [];
+  state.permissions = [];
   state.blocks = [];
   state.places = [];
   state.merchants = [];
@@ -363,6 +397,12 @@ async function updateMarket(data) {
         value: data.currency,
         type: 'string',
         description: 'Devise principale du marché',
+      },
+      {
+        key: 'receipt_prefix',
+        value: data.receiptPrefix || 'REC',
+        type: 'string',
+        description: 'Préfixe utilisé pour générer les reçus',
       },
     ],
   });
@@ -449,48 +489,56 @@ function defaultTitleForRole(role) {
   return 'Utilisateur';
 }
 
-function addUser(data) {
-  const role = data.role || 'ADMIN';
-  const user = {
-    id: createId('usr'),
-    name: data.name?.trim() || 'Nouvel utilisateur',
-    email: data.email?.trim() || '',
-    phone: data.phone?.trim() || '',
-    role,
-    title: data.title?.trim() || defaultTitleForRole(role),
-  };
+function makeUsername(name, email) {
+  const source = String(email || name || 'user')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.+|\.+$/g, '');
 
-  state.users = [user, ...state.users];
-  persist();
-  return user;
+  return source || `user-${Date.now().toString().slice(-6)}`;
 }
 
-function updateUser(userId, data) {
-  const nextUsers = state.users.map((user) =>
-    user.id === userId
-      ? {
-          ...user,
-          name: data.name?.trim() || user.name,
-          email: data.email?.trim() || user.email,
-          phone: data.phone?.trim() || user.phone,
-          role: data.role || user.role,
-          title: data.title?.trim() || user.title,
-        }
-      : user
-  );
+async function addUser(data) {
+  const role = state.roles.find((item) => item.id === Number(data.roleId) || item.code === data.role || item.code === data.roleCode)
+    || state.roles.find((item) => item.code === 'ADMIN')
+    || state.roles[0];
 
-  state.users = nextUsers;
-  if (state.currentUser?.id === userId) {
-    state.currentUser = nextUsers.find((user) => user.id === userId) || state.currentUser;
+  if (!role) {
+    throw new Error('Aucun rôle disponible pour créer un utilisateur.');
   }
-  persist();
-  return state.users.find((user) => user.id === userId) || null;
+
+  await createUserApi({
+    role_id: role.id,
+    name: data.name?.trim(),
+    username: data.username?.trim() || makeUsername(data.name, data.email),
+    email: data.email?.trim() || null,
+    phone: data.phone?.trim() || null,
+    password: data.password || 'password123',
+    status: data.status || 'ACTIVE',
+  });
+  await hydrateFromApi();
 }
 
-function deleteUser(userId) {
+async function updateUser(userId, data) {
+  const role = state.roles.find((item) => item.id === Number(data.roleId) || item.code === data.role || item.code === data.roleCode);
+
+  await updateUserApi(userId, {
+    role_id: role?.id,
+    name: data.name?.trim(),
+    username: data.username?.trim(),
+    email: data.email?.trim() || null,
+    phone: data.phone?.trim() || null,
+    password: data.password || undefined,
+    status: data.status || undefined,
+  });
+  await hydrateFromApi();
+}
+
+async function deleteUser(userId) {
   if (state.currentUser?.id === userId) return false;
-  state.users = state.users.filter((user) => user.id !== userId);
-  persist();
+  await deleteUserApi(userId);
+  await hydrateFromApi();
   return true;
 }
 
@@ -582,17 +630,35 @@ async function transferPlace(merchantId, fromPlaceId, toPlaceId, date, reason, r
   return true;
 }
 
-function addBank(data) {
-  state.banks = [
-    ...state.banks,
-    { ...data, id: createId('bank'), totalCollected: 0, transactionCount: 0 },
-  ];
-  persist();
+async function addBank(data) {
+  await createBankApi({
+    code: data.code,
+    name: data.name,
+    account_name: data.accountName || data.contactPerson || '',
+    account_number: data.accountNumber,
+    branch: data.branch,
+    description: data.description || '',
+    status: data.isActive === false ? 'INACTIVE' : 'ACTIVE',
+  });
+  await hydrateFromApi();
 }
 
-function updateBank(id, data) {
-  state.banks = state.banks.map((bank) => (bank.id === id ? { ...bank, ...data } : bank));
-  persist();
+async function updateBank(id, data) {
+  await updateBankApi(id, {
+    code: data.code,
+    name: data.name,
+    account_name: data.accountName || data.contactPerson || '',
+    account_number: data.accountNumber,
+    branch: data.branch,
+    description: data.description || '',
+    status: data.isActive === false ? 'INACTIVE' : 'ACTIVE',
+  });
+  await hydrateFromApi();
+}
+
+async function deleteBank(id) {
+  await deleteBankApi(id);
+  await hydrateFromApi();
 }
 
 function setIsNewPaymentModalOpen(open) {
@@ -642,6 +708,56 @@ async function recordPayment(data) {
   await hydrateFromApi();
   state.selectedReceipt = payment;
   return payment;
+}
+
+async function addRole(data) {
+  await createRoleApi({
+    code: data.code,
+    name: data.name,
+    description: data.description || '',
+    permission_ids: data.permissionIds || [],
+  });
+  await hydrateFromApi();
+}
+
+async function updateRole(id, data) {
+  await updateRoleApi(id, {
+    code: data.code,
+    name: data.name,
+    description: data.description || '',
+    permission_ids: data.permissionIds || [],
+  });
+  await hydrateFromApi();
+}
+
+async function deleteRole(id) {
+  await deleteRoleApi(id);
+  await hydrateFromApi();
+}
+
+async function addPermission(data) {
+  await createPermissionApi({
+    code: data.code,
+    name: data.name,
+    module: data.module,
+    description: data.description || '',
+  });
+  await hydrateFromApi();
+}
+
+async function updatePermission(id, data) {
+  await updatePermissionApi(id, {
+    code: data.code,
+    name: data.name,
+    module: data.module,
+    description: data.description || '',
+  });
+  await hydrateFromApi();
+}
+
+async function deletePermission(id) {
+  await deletePermissionApi(id);
+  await hydrateFromApi();
 }
 
 function setSelectedReceipt(payment) {
@@ -840,7 +956,14 @@ export const marketStore = {
   transferPlace,
   addBank,
   updateBank,
+  deleteBank,
   recordPayment,
+  addRole,
+  updateRole,
+  deleteRole,
+  addPermission,
+  updatePermission,
+  deletePermission,
   setSelectedReceipt,
   setIsNewPaymentModalOpen,
   cancelReceipt,

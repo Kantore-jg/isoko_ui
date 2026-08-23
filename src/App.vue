@@ -124,34 +124,11 @@
 
           <RentObligationsList v-else-if="currentView === 'finances-rents'" />
 
-          <section v-else-if="currentView === 'finances-payments'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Journal paiements & quittances</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Reçu</th>
-                    <th class="px-4 py-3">Commerçant</th>
-                    <th class="px-4 py-3">Montant</th>
-                    <th class="px-4 py-3">Date</th>
-                    <th class="px-4 py-3">Action</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="payment in state.payments" :key="payment.id">
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ payment.receiptNumber }}</td>
-                    <td class="px-4 py-3">{{ payment.merchantName }}</td>
-                    <td class="px-4 py-3">{{ money(payment.amount) }}</td>
-                    <td class="px-4 py-3">{{ payment.paymentDate }}</td>
-                    <td class="px-4 py-3">
-                      <button class="text-xs font-semibold text-emerald-700 hover:underline" @click="marketStore.setSelectedReceipt(payment)">
-                        Voir reçu
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+          <PaymentsList v-else-if="currentView === 'finances-payments'" />
+
+          <section v-else-if="currentView === 'finances-rents'" class="space-y-6">
+            <RentObligationsList />
+            <ReceiptsList />
           </section>
 
           <BanksList v-else-if="currentView === 'finances-banks'" />
@@ -180,7 +157,10 @@
             </div>
           </section>
 
-          <UsersManager v-else-if="currentView === 'admin-users'" />
+          <section v-else-if="currentView === 'admin-users'" class="space-y-6">
+            <UsersManager />
+            <RolesPermissionsManager />
+          </section>
 
           <MarketSettings v-else-if="currentView === 'admin-settings'" />
         </div>
@@ -253,9 +233,12 @@ import MerchantsList from './components/merchants/MerchantsList.vue';
 import AssignmentsList from './components/merchants/AssignmentsList.vue';
 import MovementsList from './components/merchants/MovementsList.vue';
 import BanksList from './components/finances/BanksList.vue';
+import PaymentsList from './components/finances/PaymentsList.vue';
+import ReceiptsList from './components/finances/ReceiptsList.vue';
 import RentObligationsList from './components/finances/RentObligationsList.vue';
 import MarketSettings from './components/settings/MarketSettings.vue';
 import UsersManager from './components/users/UsersManager.vue';
+import RolesPermissionsManager from './components/admin/RolesPermissionsManager.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes } from './config/api.js';

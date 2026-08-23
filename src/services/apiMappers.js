@@ -54,6 +54,7 @@ export function mapMarket(market, summary = null, settings = []) {
     city: market.commune || settingMap.market_city || '',
     country: market.province || settingMap.market_country || '',
     currency: settingMap.currency_code || 'FBu',
+    receiptPrefix: settingMap.receipt_prefix || 'REC',
     phone: market.phone || '',
     email: market.email || '',
     logo: market.logo || '',
@@ -205,12 +206,35 @@ export function mapBank(bank) {
   };
 }
 
+export function mapRole(role) {
+  return {
+    id: role.id,
+    code: role.code || '',
+    name: role.name || '',
+    description: role.description || '',
+    permissions: Array.isArray(role.permissions) ? role.permissions : [],
+    usersCount: role.users_count ?? role.usersCount ?? 0,
+  };
+}
+
+export function mapPermission(permission) {
+  return {
+    id: permission.id,
+    code: permission.code || '',
+    name: permission.name || '',
+    module: permission.module || '',
+    description: permission.description || '',
+    rolesCount: permission.roles_count ?? permission.rolesCount ?? 0,
+  };
+}
+
 export function mapPayment(payment) {
   const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
   const firstAllocation = allocations[0]?.obligation || null;
 
   return {
     id: payment.id,
+    receiptId: payment.receipt?.id || null,
     receiptNumber: payment.receipt?.receipt_number || payment.reference_number || payment.payment_number || '',
     referenceNumber: payment.reference_number || payment.payment_number || '',
     merchantId: payment.merchant_id || null,
@@ -229,6 +253,7 @@ export function mapPayment(payment) {
     paymentDate: toDateString(payment.payment_date),
     recordedBy: payment.receiver?.name || '',
     recordedByRole: payment.receiver?.role?.code || '',
+    status: payment.status || 'POSTED',
     notes: payment.notes || '',
     createdAt: toDateTimeString(payment.created_at),
   };

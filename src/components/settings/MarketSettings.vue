@@ -44,6 +44,13 @@
           </label>
         </div>
 
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label class="block">
+            <span class="mb-1 block font-semibold text-slate-700">Préfixe des reçus</span>
+            <input v-model="form.receiptPrefix" type="text" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 font-mono font-bold text-slate-900 focus:bg-white focus:outline-none">
+          </label>
+        </div>
+
         <div class="flex items-center justify-between border-t border-slate-100 pt-4">
           <span v-if="saved" class="text-xs font-bold text-emerald-600">Paramètres enregistrés avec succès.</span>
           <button type="submit" class="ml-auto rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700">
@@ -76,6 +83,7 @@ const form = reactive({
   country: '',
   phone: '',
   email: '',
+  receiptPrefix: 'REC',
 });
 
 watch(
@@ -89,6 +97,7 @@ watch(
     form.country = market.country || '';
     form.phone = market.phone || '';
     form.email = market.email || '';
+    form.receiptPrefix = market.receiptPrefix || 'REC';
   },
   { immediate: true }
 );

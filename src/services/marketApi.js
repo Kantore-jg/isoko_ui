@@ -36,6 +36,38 @@ export function deleteMerchantApi(id) {
   return apiRequest(`/merchants/${id}`, { method: 'DELETE' });
 }
 
+export function listUsersApi(params = {}) {
+  return listApi('users', params);
+}
+
+export function createUserApi(payload) {
+  return apiRequest('/users', { method: 'POST', body: payload });
+}
+
+export function updateUserApi(id, payload) {
+  return apiRequest(`/users/${id}`, { method: 'PUT', body: payload });
+}
+
+export function deleteUserApi(id) {
+  return apiRequest(`/users/${id}`, { method: 'DELETE' });
+}
+
+export function listBanksApi(params = {}) {
+  return listApi('banks', params);
+}
+
+export function createBankApi(payload) {
+  return apiRequest('/banks', { method: 'POST', body: payload });
+}
+
+export function updateBankApi(id, payload) {
+  return apiRequest(`/banks/${id}`, { method: 'PUT', body: payload });
+}
+
+export function deleteBankApi(id) {
+  return apiRequest(`/banks/${id}`, { method: 'DELETE' });
+}
+
 export function listBlocksApi(params = {}) {
   return listApi('blocks', params);
 }
@@ -118,6 +150,38 @@ export function settingsApi() {
 
 export function updateSettingsApi(payload) {
   return apiRequest('/settings', { method: 'PUT', body: payload });
+}
+
+export function listRolesApi(params = {}) {
+  return listApi('roles', params);
+}
+
+export function createRoleApi(payload) {
+  return apiRequest('/roles', { method: 'POST', body: payload });
+}
+
+export function updateRoleApi(id, payload) {
+  return apiRequest(`/roles/${id}`, { method: 'PUT', body: payload });
+}
+
+export function deleteRoleApi(id) {
+  return apiRequest(`/roles/${id}`, { method: 'DELETE' });
+}
+
+export function listPermissionsApi(params = {}) {
+  return listApi('permissions', params);
+}
+
+export function createPermissionApi(payload) {
+  return apiRequest('/permissions', { method: 'POST', body: payload });
+}
+
+export function updatePermissionApi(id, payload) {
+  return apiRequest(`/permissions/${id}`, { method: 'PUT', body: payload });
+}
+
+export function deletePermissionApi(id) {
+  return apiRequest(`/permissions/${id}`, { method: 'DELETE' });
 }
 
 export function exportExcelApi(scope = 'all') {
