@@ -122,42 +122,7 @@
 
           <AdminDashboard v-else-if="currentView === 'dashboard-admin'" />
 
-          <section v-else-if="currentView === 'dashboard-accountant'" class="space-y-6">
-            <div class="grid gap-4 md:grid-cols-3">
-              <MetricCard label="Recouvrement" :value="`${kpis.recoveryRateMonthly.toFixed(0)}%`" helper="Taux du mois" tone-class="bg-emerald-50 text-emerald-700">
-                <template #icon><Percent class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Total encaissé" :value="money(kpis.obtainedAnnual)" helper="Exercice 2026" tone-class="bg-blue-50 text-blue-700">
-                <template #icon><Wallet class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Impayés" :value="money(kpis.unpaidMonthly)" helper="À recouvrer" tone-class="bg-amber-50 text-amber-700">
-                <template #icon><FileWarning class="h-5 w-5" /></template>
-              </MetricCard>
-            </div>
-            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 class="text-sm font-bold text-slate-900">Journal paiements récents</h2>
-              <div class="mt-4 overflow-hidden">
-                <table class="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                    <tr>
-                      <th class="px-4 py-3">Reçu</th>
-                      <th class="px-4 py-3">Commerçant</th>
-                      <th class="px-4 py-3">Montant</th>
-                      <th class="px-4 py-3">Banque</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100">
-                    <tr v-for="payment in state.payments" :key="payment.id">
-                      <td class="px-4 py-3 font-semibold text-slate-900">{{ payment.receiptNumber }}</td>
-                      <td class="px-4 py-3">{{ payment.merchantName }}</td>
-                      <td class="px-4 py-3 font-semibold">{{ money(payment.amount) }}</td>
-                      <td class="px-4 py-3">{{ payment.bankCode }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
+          <AccountantDashboard v-else-if="currentView === 'dashboard-accountant'" />
 
           <OccupancyDashboard v-else-if="currentView === 'dashboard-occupancy'" />
 
@@ -280,6 +245,7 @@ import MetricCard from './components/common/MetricCard.vue';
 import AdminDashboard from './components/dashboard/AdminDashboard.vue';
 import OccupancyDashboard from './components/dashboard/OccupancyDashboard.vue';
 import ExcelManager from './components/tools/ExcelManager.vue';
+import AccountantDashboard from './components/dashboard/AccountantDashboard.vue';
 import BlocksList from './components/structure/BlocksList.vue';
 import PlacesList from './components/structure/PlacesList.vue';
 import MerchantsList from './components/merchants/MerchantsList.vue';
