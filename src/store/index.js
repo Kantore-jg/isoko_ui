@@ -135,6 +135,38 @@ function addMerchant(data) {
   persist();
 }
 
+function defaultTitleForRole(role) {
+  if (role === 'SUPER_ADMIN') return 'Directeur Général';
+  if (role === 'ADMIN') return 'Commissaire du Marché';
+  if (role === 'ACCOUNTANT') return 'Chef Comptable';
+  return 'Utilisateur';
+}
+
+function addUser(data) {
+  const role = data.role || 'ADMIN';
+  const user = {
+    id: createId('usr'),
+    name: data.name?.trim() || 'Nouvel utilisateur',
+    email: data.email?.trim() || '',
+    phone: data.phone?.trim() || '',
+    role,
+    title: data.title?.trim() || defaultTitleForRole(role),
+  };
+
+  state.users = [user, ...state.users];
+  persist();
+  return user;
+}
+
+function setCurrentUser(userId) {
+  const nextUser = state.users.find((user) => user.id === userId);
+  if (!nextUser) return null;
+  state.currentUser = nextUser;
+  state.activeTab = getDefaultTabForRole(nextUser.role);
+  persist();
+  return nextUser;
+}
+
 function updateMerchant(id, data) {
   state.merchants = state.merchants.map((merchant) => (merchant.id === id ? { ...merchant, ...data } : merchant));
   persist();
@@ -622,6 +654,7 @@ export const marketStore = {
   addPlace,
   updatePlace,
   addMerchant,
+  addUser,
   updateMerchant,
   assignPlace,
   terminateAssignment,
@@ -636,6 +669,7 @@ export const marketStore = {
   toggleRoleMenu,
   toggleNotifications,
   changeRole,
+  setCurrentUser,
   resetToDefaults,
   getPathFromTab,
 };

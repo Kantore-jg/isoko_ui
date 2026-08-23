@@ -193,16 +193,7 @@
             </div>
           </section>
 
-          <section v-else-if="currentView === 'admin-users'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Utilisateurs & rôles</h2>
-            <div class="mt-4 grid gap-4 md:grid-cols-3">
-              <article v-for="user in state.users" :key="user.id" class="rounded-2xl border border-slate-200 p-4">
-                <p class="text-sm font-bold text-slate-900">{{ user.name }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ user.email }}</p>
-                <p class="mt-3 text-[11px] font-semibold text-emerald-600">{{ user.role }}</p>
-              </article>
-            </div>
-          </section>
+          <UsersManager v-else-if="currentView === 'admin-users'" />
 
           <MarketSettings v-else-if="currentView === 'admin-settings'" />
         </div>
@@ -253,6 +244,7 @@ import MovementsList from './components/merchants/MovementsList.vue';
 import BanksList from './components/finances/BanksList.vue';
 import RentObligationsList from './components/finances/RentObligationsList.vue';
 import MarketSettings from './components/settings/MarketSettings.vue';
+import UsersManager from './components/users/UsersManager.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes, getPathFromTab } from './config/api.js';
