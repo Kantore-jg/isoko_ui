@@ -113,7 +113,7 @@
 
           <label class="block" v-if="modalType === 'ROLE'">
             <span class="mb-1 block font-semibold text-slate-700">Description</span>
-            <textarea v-model="form.description" rows="3" class="w-full resize-none rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" />
+            <textarea v-model="form.description" rows="3" class="w-full resize-none rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none"></textarea>
           </label>
 
           <label class="block" v-else>
@@ -129,6 +129,9 @@
                 <span>{{ permission.code }}</span>
               </label>
             </div>
+            <p class="mt-3 text-[11px] text-slate-500">
+              Au moins une permission est requise pour enregistrer un rôle.
+            </p>
           </div>
 
           <p v-if="errorMessage" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
@@ -139,7 +142,11 @@
             <button type="button" class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50" @click="close">
               Annuler
             </button>
-            <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700">
+            <button
+              type="submit"
+              class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300"
+              :disabled="!canSubmit"
+            >
               Enregistrer
             </button>
           </div>
@@ -161,6 +168,13 @@ const errorMessage = ref('');
 
 const roles = computed(() => marketStore.state.roles || []);
 const permissions = computed(() => marketStore.state.permissions || []);
+const canSubmit = computed(() => {
+  const hasBaseFields = Boolean(form.code.trim() && form.name.trim());
+  if (modalType.value === 'ROLE') {
+    return hasBaseFields && form.permissionIds.length > 0;
+  }
+  return hasBaseFields && Boolean(form.module.trim());
+});
 
 const form = reactive({
   code: '',
@@ -213,16 +227,42 @@ function close() {
 
 async function save() {
   try {
+    const payload = {
+      code: form.code.trim(),
+      name: form.name.trim(),
+      description: form.description.trim(),
+      module: form.module.trim(),
+      permissionIds: [...form.permissionIds],
+    };
+
+    if (!payload.code || !payload.name) {
+      errorMessage.value = 'Le code et le nom sont obligatoires.';
+      return;
+    }
+
     if (modalType.value === 'ROLE') {
+      if (!payload.permissionIds.length) {
+        errorMessage.value = 'Sélectionnez au moins une permission pour ce rôle.';
+        return;
+      }
+
       if (editingId.value) {
-        await marketStore.updateRole(editingId.value, { ...form });
+        await marketStore.updateRole(editingId.value, payload);
       } else {
-        await marketStore.addRole({ ...form });
+        await marketStore.addRole(payload);
       }
     } else if (editingId.value) {
-      await marketStore.updatePermission(editingId.value, { ...form });
+      if (!payload.module) {
+        errorMessage.value = 'Le module est obligatoire pour une permission.';
+        return;
+      }
+      await marketStore.updatePermission(editingId.value, payload);
     } else {
-      await marketStore.addPermission({ ...form });
+      if (!payload.module) {
+        errorMessage.value = 'Le module est obligatoire pour une permission.';
+        return;
+      }
+      await marketStore.addPermission(payload);
     }
     close();
   } catch (error) {

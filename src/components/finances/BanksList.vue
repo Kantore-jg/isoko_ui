@@ -1,16 +1,27 @@
 <template>
   <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-    <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <h2 class="text-sm font-bold text-slate-900">Banques partenaires</h2>
         <p class="mt-1 text-xs text-slate-500">Création et édition des comptes récepteurs.</p>
       </div>
-      <button
-        class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
-        @click="openCreate"
-      >
-        Nouvelle banque
-      </button>
+      <div class="flex flex-col gap-2 sm:min-w-80 lg:items-end">
+        <label class="w-full">
+          <span class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Rechercher</span>
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="Code, nom, compte, agence..."
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B2CC1]/20"
+          >
+        </label>
+        <button
+          class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700"
+          @click="openCreate"
+        >
+          Nouvelle banque
+        </button>
+      </div>
     </div>
 
     <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -40,11 +51,15 @@
       </article>
     </div>
 
+    <p v-if="!filteredBanks.length" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+      Aucune banque ne correspond à la recherche.
+    </p>
+
     <p v-if="formError" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
       {{ formError }}
     </p>
 
-    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="banks.length" />
+    <PaginationControls v-model:currentPage="currentPage" :page-size="pageSize" :total-items="filteredBanks.length" />
 
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -103,6 +118,7 @@ import PaginationControls from '../common/PaginationControls.vue';
 import { marketStore } from '../../store/index.js';
 
 const banks = computed(() => marketStore.state.banks || []);
+const searchQuery = ref('');
 const currentPage = ref(1);
 const pageSize = 6;
 const isOpen = ref(false);
@@ -114,6 +130,17 @@ const form = reactive({
   accountNumber: '',
   branch: '',
   isActive: true,
+});
+
+const filteredBanks = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return banks.value;
+
+  return banks.value.filter((bank) =>
+    [bank.code, bank.name, bank.accountNumber, bank.branch]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query))
+  );
 });
 
 function resetForm(bank = null) {
@@ -128,7 +155,7 @@ function resetForm(bank = null) {
 
 const paginatedBanks = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
-  return banks.value.slice(start, start + pageSize);
+  return filteredBanks.value.slice(start, start + pageSize);
 });
 
 function openCreate() {
@@ -180,9 +207,13 @@ async function removeBank(bank) {
 }
 
 watch(banks, () => {
-  const totalPages = Math.max(1, Math.ceil(banks.value.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(filteredBanks.value.length / pageSize));
   if (currentPage.value > totalPages) {
     currentPage.value = totalPages;
   }
+});
+
+watch(searchQuery, () => {
+  currentPage.value = 1;
 });
 </script>

@@ -8,12 +8,24 @@
         </p>
       </div>
 
-      <button
-        class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
-        @click="openCreate"
-      >
-        Ajouter un utilisateur
-      </button>
+      <div class="flex flex-col gap-2 sm:min-w-80 sm:items-end">
+        <label class="w-full">
+          <span class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Rechercher</span>
+          <input
+            v-model="searchQuery"
+            type="search"
+            placeholder="Nom, email, téléphone, rôle..."
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B2CC1]/20"
+          >
+        </label>
+
+        <button
+          class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+          @click="openCreate"
+        >
+          Ajouter un utilisateur
+        </button>
+      </div>
     </div>
 
     <div class="grid grid-cols-3 gap-3 text-center text-xs">
@@ -52,7 +64,7 @@
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr
-              v-for="user in users"
+              v-for="user in filteredUsers"
               :key="user.id"
               class="transition-colors hover:bg-slate-50/70"
               :class="user.id === currentUser?.id ? 'bg-emerald-50/40' : ''"
@@ -102,6 +114,10 @@
           </tbody>
         </table>
       </div>
+
+      <p v-if="!filteredUsers.length" class="border-t border-slate-100 px-5 py-4 text-xs text-slate-500">
+        Aucun utilisateur ne correspond à la recherche.
+      </p>
     </div>
 
     <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
@@ -221,6 +237,7 @@ import { marketStore } from '../../store/index.js';
 const users = computed(() => marketStore.state.users || []);
 const currentUser = computed(() => marketStore.state.currentUser || null);
 const userRoles = computed(() => marketStore.state.roles || []);
+const searchQuery = ref('');
 const isModalOpen = ref(false);
 const editingUser = ref(null);
 const formError = ref('');
@@ -235,6 +252,24 @@ const form = reactive({
 });
 
 const adminCount = computed(() => users.value.filter((user) => user.role === 'ADMIN').length);
+const filteredUsers = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  if (!query) return users.value;
+
+  return users.value.filter((user) => {
+    const role = roleLabel(user.role).toLowerCase();
+    return [
+      user.name,
+      user.email,
+      user.phone,
+      user.username,
+      user.title,
+      role,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
+});
 const selectedRoleCode = computed(() => {
   const role = userRoles.value.find((item) => String(item.id) === String(form.roleId));
   return role?.code || 'ADMIN';

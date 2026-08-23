@@ -122,8 +122,6 @@
 
           <MovementsList v-else-if="currentView === 'merchants-movements'" />
 
-          <RentObligationsList v-else-if="currentView === 'finances-rents'" />
-
           <PaymentsList v-else-if="currentView === 'finances-payments'" />
 
           <section v-else-if="currentView === 'finances-rents'" class="space-y-6">
@@ -171,32 +169,7 @@
     </div>
   </div>
 
-  <div v-else-if="ready" class="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4 text-slate-700">
-    <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
-      <div class="mb-6 text-center">
-        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center bg-[#1B2CC1] text-2xl font-bold text-white">M</div>
-        <h1 class="text-xl font-bold text-slate-900">Connexion API</h1>
-        <p class="mt-1 text-sm text-slate-500">Connectez-vous pour charger les données du backend Laravel.</p>
-      </div>
-
-      <form class="space-y-4" @submit.prevent="submitLogin">
-        <label class="block">
-          <span class="mb-1 block text-xs font-semibold text-slate-700">Identifiant</span>
-          <input v-model="loginForm.login" type="text" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:outline-none" autocomplete="username" required>
-        </label>
-        <label class="block">
-          <span class="mb-1 block text-xs font-semibold text-slate-700">Mot de passe</span>
-          <input v-model="loginForm.password" type="password" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:outline-none" autocomplete="current-password" required>
-        </label>
-
-        <p v-if="loginError" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{{ loginError }}</p>
-
-        <button type="submit" :disabled="isLoggingIn" class="w-full rounded-xl bg-[#1B2CC1] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#152399] disabled:cursor-not-allowed disabled:opacity-60">
-          {{ isLoggingIn ? 'Connexion...' : 'Se connecter' }}
-        </button>
-      </form>
-    </div>
-  </div>
+  <Login v-else-if="ready" />
 
   <div v-else class="flex h-screen items-center justify-center bg-slate-50 text-slate-600">
     Chargement de la session...
@@ -204,7 +177,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Banknote,
@@ -239,6 +212,7 @@ import RentObligationsList from './components/finances/RentObligationsList.vue';
 import MarketSettings from './components/settings/MarketSettings.vue';
 import UsersManager from './components/users/UsersManager.vue';
 import RolesPermissionsManager from './components/admin/RolesPermissionsManager.vue';
+import Login from './components/auth/Login.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes } from './config/api.js';
@@ -259,16 +233,8 @@ const overdueCount = marketStore.overdueCount;
 const kpis = marketStore.kpis;
 const monthlyTrends = marketStore.monthlyTrends;
 const overdueMerchants = marketStore.overdueMerchants;
-const totalTransactions = marketStore.totalTransactions;
-const totalBanked = marketStore.totalBanked;
 const roleAbbr = marketStore.roleAbbr;
 const activeTab = computed(() => state.activeTab);
-const loginForm = reactive({
-  login: '',
-  password: '',
-});
-const isLoggingIn = ref(false);
-const loginError = ref('');
 
 const iconForTab = (tab) => {
   if (tab.startsWith('dashboard')) {
@@ -299,29 +265,12 @@ const visibleRoutes = computed(() =>
 const toggleSidebar = () => marketStore.toggleSidebar();
 const toggleRoleMenu = () => marketStore.toggleRoleMenu();
 const toggleNotifications = () => marketStore.toggleNotifications();
-const onReset = () => marketStore.resetToDefaults();
+const navigate = (path) => router.push(path);
 const logout = async () => {
   await marketStore.logout();
   await router.replace('/');
 };
 const money = (value) => formatCurrency(value, 'FBu');
-
-async function submitLogin() {
-  isLoggingIn.value = true;
-  loginError.value = '';
-
-  try {
-    await marketStore.login({
-      login: loginForm.login,
-      password: loginForm.password,
-    });
-    await router.replace('/dashboard');
-  } catch (error) {
-    loginError.value = error?.message || 'Connexion impossible.';
-  } finally {
-    isLoggingIn.value = false;
-  }
-}
 
 watch(
   () => route.path,
