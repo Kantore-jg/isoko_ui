@@ -26,6 +26,8 @@ const state = reactive({
   banks: [],
   payments: [],
   auditLogs: [],
+  selectedReceipt: null,
+  isNewPaymentModalOpen: false,
 });
 
 const ready = ref(false);
@@ -52,6 +54,10 @@ function snapshotState() {
   };
 }
 
+function createId(prefix) {
+  return `${prefix}-${Date.now()}`;
+}
+
 function persist() {
   saveMarketState(snapshotState()).catch(() => {});
 }
@@ -69,6 +75,376 @@ async function init() {
   applySeed(await loadMarketState());
   ready.value = true;
   await persist();
+}
+
+function updateMarket(data) {
+  state.market = { ...state.market, ...data };
+  persist();
+}
+
+function addBlock(data) {
+  state.blocks = [...state.blocks, { ...data, id: createId('blk') }];
+  state.market.totalBlocks += 1;
+  persist();
+}
+
+function updateBlock(id, data) {
+  state.blocks = state.blocks.map((block) => (block.id === id ? { ...block, ...data } : block));
+  persist();
+}
+
+function addPlace(data) {
+  state.places = [...state.places, { ...data, id: createId('plc') }];
+  state.market.totalPlaces += 1;
+  state.blocks = state.blocks.map((block) =>
+    block.id === data.blockId ? { ...block, totalPlaces: block.totalPlaces + 1 } : block
+  );
+  persist();
+}
+
+function updatePlace(id, data) {
+  state.places = state.places.map((place) => (place.id === id ? { ...place, ...data } : place));
+  persist();
+}
+
+function addAuditLog(action, actionLabel, details, targetId, amount, bank) {
+  const now = new Date();
+  const timestamp = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  state.auditLogs = [
+    {
+      id: createId('log'),
+      timestamp,
+      userName: state.currentUser?.name || 'Système',
+      userRole: state.currentUser?.role || 'SUPER_ADMIN',
+      action,
+      actionLabel,
+      details,
+      targetId,
+      amount,
+      bank,
+    },
+    ...state.auditLogs,
+  ];
+}
+
+function addMerchant(data) {
+  state.merchants = [
+    ...state.merchants,
+    { ...data, id: createId('mer'), totalPaid: 0, balanceDue: 0 },
+  ];
+  persist();
+}
+
+function updateMerchant(id, data) {
+  state.merchants = state.merchants.map((merchant) => (merchant.id === id ? { ...merchant, ...data } : merchant));
+  persist();
+}
+
+function assignPlace(placeId, merchantId, startDate, rentAmount, notes = '') {
+  const targetPlace = state.places.find((place) => place.id === placeId);
+  const targetMerchant = state.merchants.find((merchant) => merchant.id === merchantId);
+  if (!targetPlace || !targetMerchant) return null;
+
+  const assignmentId = createId('asg');
+  const now = new Date();
+  const createdAt = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+
+  const newAssignment = {
+    id: assignmentId,
+    placeId,
+    placeCode: targetPlace.code,
+    blockCode: targetPlace.blockCode,
+    merchantId,
+    merchantName: targetMerchant.name,
+    startDate,
+    rentAmount,
+    status: 'ACTIVE',
+    createdBy: state.currentUser?.name || 'Système',
+    createdAt,
+    notes,
+  };
+
+  state.assignments = [newAssignment, ...state.assignments];
+  state.places = state.places.map((place) =>
+    place.id === placeId
+      ? {
+          ...place,
+          status: 'OCCUPIED',
+          currentMerchantId: merchantId,
+          currentMerchantName: targetMerchant.name,
+          currentAssignmentId: assignmentId,
+          rentPrice: rentAmount,
+          notes: place.notes,
+        }
+      : place
+  );
+  state.merchants = state.merchants.map((merchant) =>
+    merchant.id === merchantId
+      ? {
+          ...merchant,
+          status: 'ACTIVE',
+          currentPlaceId: placeId,
+          currentPlaceCode: targetPlace.code,
+        }
+      : merchant
+  );
+
+  state.movements = [
+    {
+      id: createId('mov'),
+      placeId,
+      placeCode: targetPlace.code,
+      date: startDate,
+      type: 'ENTRY',
+      typeLabel: 'Entrée initiale',
+      newMerchantId: merchantId,
+      newMerchantName: targetMerchant.name,
+      reason: notes || `Affectation de la place ${targetPlace.code}`,
+      executedBy: state.currentUser?.name || 'Système',
+      createdAt,
+    },
+    ...state.movements,
+  ];
+
+  state.obligations = [
+    ...state.obligations,
+    {
+      id: createId('obl'),
+      assignmentId,
+      placeId,
+      placeCode: targetPlace.code,
+      blockCode: targetPlace.blockCode,
+      merchantId,
+      merchantName: targetMerchant.name,
+      periodYear: 2026,
+      periodMonth: 8,
+      periodLabel: 'Août 2026',
+      amountExpected: rentAmount,
+      amountPaid: 0,
+      balance: rentAmount,
+      status: 'PENDING',
+      dueDate: '2026-08-10',
+    },
+  ];
+
+  addAuditLog('ASSIGNMENT_CREATED', 'Affectation Place', `Place ${targetPlace.code} affectée à ${targetMerchant.name}.`, targetPlace.code);
+  persist();
+  return newAssignment;
+}
+
+function terminateAssignment(assignmentId, endDate, reason = 'Départ / Fin de contrat') {
+  const assignment = state.assignments.find((item) => item.id === assignmentId);
+  if (!assignment) return null;
+
+  state.assignments = state.assignments.map((item) =>
+    item.id === assignmentId ? { ...item, status: 'ENDED', endDate } : item
+  );
+  state.places = state.places.map((place) =>
+    place.id === assignment.placeId
+      ? {
+          ...place,
+          status: 'AVAILABLE',
+          currentMerchantId: undefined,
+          currentMerchantName: undefined,
+          currentAssignmentId: undefined,
+        }
+      : place
+  );
+  state.merchants = state.merchants.map((merchant) =>
+    merchant.id === assignment.merchantId
+      ? {
+          ...merchant,
+          currentPlaceId: undefined,
+          currentPlaceCode: undefined,
+        }
+      : merchant
+  );
+  state.movements = [
+    {
+      id: createId('mov'),
+      placeId: assignment.placeId,
+      placeCode: assignment.placeCode,
+      date: endDate,
+      type: 'EXIT',
+      typeLabel: 'Sortie / Libération',
+      oldMerchantId: assignment.merchantId,
+      oldMerchantName: assignment.merchantName,
+      reason,
+      executedBy: state.currentUser?.name || 'Système',
+      createdAt: `${endDate} 00:00`,
+    },
+    ...state.movements,
+  ];
+  addAuditLog('ASSIGNMENT_ENDED', 'Libération Place', `Place ${assignment.placeCode} libérée.`, assignment.placeCode);
+  persist();
+  return assignment;
+}
+
+function transferPlace(merchantId, fromPlaceId, toPlaceId, date, reason, rentAmount) {
+  const fromPlace = state.places.find((place) => place.id === fromPlaceId);
+  const toPlace = state.places.find((place) => place.id === toPlaceId);
+  const merchant = state.merchants.find((item) => item.id === merchantId);
+  if (!fromPlace || !toPlace || !merchant) return null;
+
+  const oldAssignment = state.assignments.find(
+    (assignment) => assignment.merchantId === merchantId && assignment.placeId === fromPlaceId && assignment.status === 'ACTIVE'
+  );
+
+  if (oldAssignment) {
+    state.assignments = state.assignments.map((assignment) =>
+      assignment.id === oldAssignment.id ? { ...assignment, status: 'ENDED', endDate: date } : assignment
+    );
+  }
+
+  state.places = state.places.map((place) =>
+    place.id === fromPlaceId
+      ? {
+          ...place,
+          status: 'AVAILABLE',
+          currentMerchantId: undefined,
+          currentMerchantName: undefined,
+          currentAssignmentId: undefined,
+        }
+      : place
+  );
+
+  assignPlace(toPlaceId, merchantId, date, rentAmount, `Mutation depuis ${fromPlace.code}: ${reason}`);
+  state.movements = [
+    {
+      id: createId('mov'),
+      placeId: toPlaceId,
+      placeCode: toPlace.code,
+      date,
+      type: 'TRANSFER',
+      typeLabel: 'Mutation / Changement de Place',
+      newMerchantId: merchantId,
+      newMerchantName: merchant.name,
+      reason: `Transfert depuis ${fromPlace.code}. Raison: ${reason}`,
+      executedBy: state.currentUser?.name || 'Système',
+      createdAt: `${date} 00:00`,
+    },
+    ...state.movements,
+  ];
+  addAuditLog('MOVEMENT_LOGGED', 'Mutation Commerçant', `Mutation de ${merchant.name} de ${fromPlace.code} vers ${toPlace.code}.`, toPlace.code);
+  persist();
+  return true;
+}
+
+function addBank(data) {
+  state.banks = [
+    ...state.banks,
+    { ...data, id: createId('bank'), totalCollected: 0, transactionCount: 0 },
+  ];
+  persist();
+}
+
+function updateBank(id, data) {
+  state.banks = state.banks.map((bank) => (bank.id === id ? { ...bank, ...data } : bank));
+  persist();
+}
+
+function setSelectedReceipt(payment) {
+  state.selectedReceipt = payment;
+}
+
+function setIsNewPaymentModalOpen(open) {
+  state.isNewPaymentModalOpen = open;
+}
+
+function recordPayment(data) {
+  const merchant = state.merchants.find((item) => item.id === data.merchantId);
+  const place = state.places.find((item) => item.id === data.placeId);
+  const bank = state.banks.find((item) => item.id === data.bankId);
+  const periodLabel = `${monthNames[data.periodMonth - 1] || 'Mois'} ${data.periodYear}`;
+  const now = new Date();
+  const createdAt = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+
+  const payment = {
+    id: createId('pay'),
+    receiptNumber: data.referenceNumber,
+    referenceNumber: data.referenceNumber,
+    merchantId: data.merchantId,
+    merchantName: merchant?.name || 'Commerçant',
+    placeId: data.placeId,
+    placeCode: place?.code || 'Place',
+    blockCode: place?.blockCode || 'Bloc',
+    periodYear: data.periodYear,
+    periodMonth: data.periodMonth,
+    periodLabel,
+    amount: data.amount,
+    bankId: data.bankId,
+    bankName: bank?.name || 'Banque',
+    bankCode: bank?.code || 'BANQUE',
+    paymentDate: data.paymentDate,
+    recordedBy: state.currentUser?.name || 'Système',
+    recordedByRole: state.currentUser?.role || 'SUPER_ADMIN',
+    notes: data.notes,
+    createdAt,
+  };
+
+  state.payments = [payment, ...state.payments];
+  state.banks = state.banks.map((item) =>
+    item.id === data.bankId
+      ? {
+          ...item,
+          totalCollected: item.totalCollected + data.amount,
+          transactionCount: item.transactionCount + 1,
+        }
+      : item
+  );
+  state.merchants = state.merchants.map((item) =>
+    item.id === data.merchantId
+      ? {
+          ...item,
+          totalPaid: (item.totalPaid || 0) + data.amount,
+          balanceDue: Math.max(0, (item.balanceDue || 0) - data.amount),
+        }
+      : item
+  );
+
+  const currentObligation = state.obligations.find(
+    (item) =>
+      item.merchantId === data.merchantId &&
+      item.placeId === data.placeId &&
+      item.periodYear === data.periodYear &&
+      item.periodMonth === data.periodMonth
+  );
+
+  if (currentObligation) {
+    state.obligations = state.obligations.map((item) => {
+      if (item.id !== currentObligation.id) return item;
+      const amountPaid = item.amountPaid + data.amount;
+      const balance = Math.max(0, item.amountExpected - amountPaid);
+      return {
+        ...item,
+        amountPaid,
+        balance,
+        status: balance === 0 ? 'PAID' : 'PARTIAL',
+        paidAt: data.paymentDate,
+      };
+    });
+  }
+
+  state.auditLogs = [
+    {
+      id: createId('log'),
+      timestamp: createdAt,
+      userName: state.currentUser?.name || 'Système',
+      userRole: state.currentUser?.role || 'SUPER_ADMIN',
+      action: 'PAYMENT_CREATED',
+      actionLabel: 'Paiement & Reçu Enregistré',
+      targetId: payment.referenceNumber,
+      details: `Reçu ${payment.referenceNumber} (${payment.amount.toLocaleString()} FBu) encaissé pour ${payment.merchantName}.`,
+      amount: payment.amount,
+      bank: payment.bankCode,
+    },
+    ...state.auditLogs,
+  ];
+
+  state.selectedReceipt = payment;
+  state.isNewPaymentModalOpen = false;
+  persist();
+  return payment;
 }
 
 function syncRoute(pathname) {
@@ -238,6 +614,21 @@ export const marketStore = {
   totalTransactions,
   totalBanked,
   init,
+  updateMarket,
+  addBlock,
+  updateBlock,
+  addPlace,
+  updatePlace,
+  addMerchant,
+  updateMerchant,
+  assignPlace,
+  terminateAssignment,
+  transferPlace,
+  addBank,
+  updateBank,
+  recordPayment,
+  setSelectedReceipt,
+  setIsNewPaymentModalOpen,
   syncRoute,
   toggleSidebar,
   toggleRoleMenu,

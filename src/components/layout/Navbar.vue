@@ -17,17 +17,6 @@
     </div>
 
     <div class="flex items-center gap-3">
-      <div class="relative hidden w-64 md:block lg:w-72">
-        <Search class="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          :value="searchQuery"
-          @input="$emit('update:searchQuery', $event.target.value)"
-          placeholder="Rechercher place, reçu, commerçant..."
-          class="w-full rounded-md border border-slate-200 bg-slate-50 py-1.5 pl-8.5 pr-3 text-xs placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        >
-      </div>
-
       <button
         v-if="currentUser.role !== 'SUPER_ADMIN'"
         class="flex cursor-pointer items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 active:bg-emerald-800"
@@ -35,15 +24,6 @@
       >
         <PlusCircle class="h-3.5 w-3.5" />
         <span class="hidden sm:inline">Nouveau Paiement</span>
-      </button>
-
-      <button
-        v-else
-        class="flex cursor-pointer items-center gap-1.5 rounded-md bg-emerald-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-emerald-700"
-        @click="$emit('navigate', '/tools/excel')"
-      >
-        <FileSpreadsheet class="h-3.5 w-3.5" />
-        <span class="hidden sm:inline">Rapport Excel</span>
       </button>
 
       <div class="relative">
@@ -80,11 +60,9 @@
 import {
   Bell,
   ChevronDown,
-  FileSpreadsheet,
   PanelLeftClose,
   PanelLeftOpen,
   PlusCircle,
-  Search,
 } from 'lucide-vue-next';
 
 defineProps({
@@ -94,7 +72,6 @@ defineProps({
   roleAbbr: { type: String, required: true },
   currentUserTitle: { type: String, required: true },
   overdueCount: { type: Number, default: 0 },
-  searchQuery: { type: String, default: '' },
   collapsed: { type: Boolean, default: false },
 });
 
@@ -103,7 +80,5 @@ defineEmits([
   'toggle-role-menu',
   'toggle-notifications',
   'open-payment',
-  'navigate',
-  'update:searchQuery',
 ]);
 </script>

@@ -17,14 +17,11 @@
         :role-abbr="roleAbbr"
         :current-user-title="state.currentUser.title"
         :overdue-count="overdueCount"
-        :search-query="searchQuery"
         :collapsed="state.sidebarCollapsed"
         @toggle-sidebar="toggleSidebar"
         @toggle-role-menu="toggleRoleMenu"
         @toggle-notifications="toggleNotifications"
         @open-payment="openPaymentDrawer"
-        @navigate="navigate"
-        @update:searchQuery="searchQuery = $event"
       />
 
       <div v-if="showNotifications" class="absolute right-6 top-20 z-40 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
@@ -215,149 +212,17 @@
             </div>
           </section>
 
-          <section v-else-if="currentView === 'structure-blocks'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Blocs & tarifs</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Bloc</th>
-                    <th class="px-4 py-3">Catégorie</th>
-                    <th class="px-4 py-3">Tarif</th>
-                    <th class="px-4 py-3">Places</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="block in blockStats" :key="block.id">
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ block.name }}</td>
-                    <td class="px-4 py-3">{{ block.category }}</td>
-                    <td class="px-4 py-3">{{ money(block.defaultPrice) }}</td>
-                    <td class="px-4 py-3">{{ block.totalPlaces }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <BlocksList v-else-if="currentView === 'structure-blocks'" />
 
-          <section v-else-if="currentView === 'structure-places'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Places du marché</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Place</th>
-                    <th class="px-4 py-3">Bloc</th>
-                    <th class="px-4 py-3">Statut</th>
-                    <th class="px-4 py-3">Commerçant</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="place in state.places" :key="place.id">
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ place.code }}</td>
-                    <td class="px-4 py-3">{{ place.blockCode }}</td>
-                    <td class="px-4 py-3">{{ place.status }}</td>
-                    <td class="px-4 py-3">{{ place.currentMerchantName || 'Libre' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <PlacesList v-else-if="currentView === 'structure-places'" />
 
-          <section v-else-if="currentView === 'merchants-list'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Commerçants</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Nom</th>
-                    <th class="px-4 py-3">Téléphone</th>
-                    <th class="px-4 py-3">Place</th>
-                    <th class="px-4 py-3">Statut</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="merchant in state.merchants" :key="merchant.id">
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ merchant.name }}</td>
-                    <td class="px-4 py-3">{{ merchant.phone }}</td>
-                    <td class="px-4 py-3">{{ merchant.currentPlaceCode || 'N/A' }}</td>
-                    <td class="px-4 py-3">{{ merchant.status }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <MerchantsList v-else-if="currentView === 'merchants-list'" />
 
-          <section v-else-if="currentView === 'merchants-assignments'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Affectations actives</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Place</th>
-                    <th class="px-4 py-3">Commerçant</th>
-                    <th class="px-4 py-3">Début</th>
-                    <th class="px-4 py-3">Loyer</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="assignment in state.assignments" :key="assignment.id">
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ assignment.placeCode }}</td>
-                    <td class="px-4 py-3">{{ assignment.merchantName }}</td>
-                    <td class="px-4 py-3">{{ assignment.startDate }}</td>
-                    <td class="px-4 py-3">{{ money(assignment.rentAmount) }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <AssignmentsList v-else-if="currentView === 'merchants-assignments'" />
 
-          <section v-else-if="currentView === 'merchants-movements'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Mouvements & historique</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Date</th>
-                    <th class="px-4 py-3">Place</th>
-                    <th class="px-4 py-3">Type</th>
-                    <th class="px-4 py-3">Motif</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="movement in state.movements" :key="movement.id">
-                    <td class="px-4 py-3">{{ movement.date }}</td>
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ movement.placeCode }}</td>
-                    <td class="px-4 py-3">{{ movement.typeLabel }}</td>
-                    <td class="px-4 py-3">{{ movement.reason }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <MovementsList v-else-if="currentView === 'merchants-movements'" />
 
-          <section v-else-if="currentView === 'finances-rents'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Loyers & reçus</h2>
-            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Commerçant</th>
-                    <th class="px-4 py-3">Période</th>
-                    <th class="px-4 py-3">Montant</th>
-                    <th class="px-4 py-3">Statut</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="obligation in state.obligations" :key="obligation.id">
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ obligation.merchantName }}</td>
-                    <td class="px-4 py-3">{{ obligation.periodLabel }}</td>
-                    <td class="px-4 py-3">{{ money(obligation.amountExpected) }}</td>
-                    <td class="px-4 py-3">{{ obligation.status }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <RentObligationsList v-else-if="currentView === 'finances-rents'" />
 
           <section v-else-if="currentView === 'finances-payments'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-bold text-slate-900">Journal paiements & quittances</h2>
@@ -369,6 +234,7 @@
                     <th class="px-4 py-3">Commerçant</th>
                     <th class="px-4 py-3">Montant</th>
                     <th class="px-4 py-3">Date</th>
+                    <th class="px-4 py-3">Action</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -377,35 +243,18 @@
                     <td class="px-4 py-3">{{ payment.merchantName }}</td>
                     <td class="px-4 py-3">{{ money(payment.amount) }}</td>
                     <td class="px-4 py-3">{{ payment.paymentDate }}</td>
+                    <td class="px-4 py-3">
+                      <button class="text-xs font-semibold text-emerald-700 hover:underline" @click="marketStore.setSelectedReceipt(payment)">
+                        Voir reçu
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </section>
 
-          <section v-else-if="currentView === 'finances-banks'" class="space-y-6">
-            <div class="grid gap-4 md:grid-cols-3">
-              <MetricCard label="Banques actives" :value="String(state.banks.length)" helper="Partenaires" tone-class="bg-blue-50 text-blue-700">
-                <template #icon><Landmark class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Transactions" :value="String(totalTransactions)" helper="Historique" tone-class="bg-emerald-50 text-emerald-700">
-                <template #icon><Repeat2 class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Total encaissé" :value="money(totalBanked)" helper="Cumul banques" tone-class="bg-amber-50 text-amber-700">
-                <template #icon><Banknote class="h-5 w-5" /></template>
-              </MetricCard>
-            </div>
-            <div class="grid gap-4 md:grid-cols-3">
-              <article v-for="bank in state.banks" :key="bank.id" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="text-sm font-bold text-slate-900">{{ bank.code }}</h3>
-                <p class="mt-1 text-xs text-slate-500">{{ bank.name }}</p>
-                <div class="mt-4 flex items-center justify-between text-xs text-slate-600">
-                  <span>{{ money(bank.totalCollected) }}</span>
-                  <span>{{ bank.transactionCount }} opérations</span>
-                </div>
-              </article>
-            </div>
-          </section>
+          <BanksList v-else-if="currentView === 'finances-banks'" />
 
           <section v-else-if="currentView === 'tools-excel'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-bold text-slate-900">Import / Export Excel</h2>
@@ -445,18 +294,12 @@
             </div>
           </section>
 
-          <section v-else-if="currentView === 'admin-settings'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Paramètres marché</h2>
-            <p class="mt-2 text-sm text-slate-600">Cette vue conserve l’apparence actuelle et servira de point d’entrée pour les réglages métier côté API.</p>
-            <button
-              class="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-slate-700"
-              @click="onReset"
-            >
-              Réinitialiser les données locales
-            </button>
-          </section>
+          <MarketSettings v-else-if="currentView === 'admin-settings'" />
         </div>
       </main>
+
+      <NewPaymentModal />
+      <ReceiptModal />
     </div>
   </div>
 
@@ -489,6 +332,16 @@ import {
 import Sidebar from './components/layout/Sidebar.vue';
 import Navbar from './components/layout/Navbar.vue';
 import MetricCard from './components/common/MetricCard.vue';
+import BlocksList from './components/structure/BlocksList.vue';
+import PlacesList from './components/structure/PlacesList.vue';
+import MerchantsList from './components/merchants/MerchantsList.vue';
+import AssignmentsList from './components/merchants/AssignmentsList.vue';
+import MovementsList from './components/merchants/MovementsList.vue';
+import BanksList from './components/finances/BanksList.vue';
+import RentObligationsList from './components/finances/RentObligationsList.vue';
+import MarketSettings from './components/settings/MarketSettings.vue';
+import NewPaymentModal from './components/finances/NewPaymentModal.vue';
+import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes, getPathFromTab } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
@@ -498,7 +351,6 @@ const router = useRouter();
 
 const state = marketStore.state;
 const ready = marketStore.ready;
-const searchQuery = marketStore.searchQuery;
 const showRoleMenu = marketStore.showRoleMenu;
 const showNotifications = marketStore.showNotifications;
 const currentView = marketStore.currentView;
@@ -540,8 +392,12 @@ const visibleRoutes = computed(() =>
   }))
 );
 
-const navigate = (path) => router.push(path);
-const openPaymentDrawer = () => router.push('/finances/payments');
+const openPaymentDrawer = () => {
+  marketStore.setIsNewPaymentModalOpen(true);
+  if (route.path !== '/finances/payments') {
+    router.push('/finances/payments');
+  }
+};
 const changeRole = (role) => {
   marketStore.changeRole(role);
   router.push(getPathFromTab(state.activeTab));
