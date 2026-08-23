@@ -1,5 +1,5 @@
 <template>
-  <div v-if="ready && state" class="relative flex h-screen overflow-hidden bg-[#F8FAFC] text-slate-800 antialiased">
+  <div v-if="ready && state.currentUser" class="relative flex h-screen overflow-hidden bg-[#F8FAFC] text-slate-800 antialiased">
     <Sidebar
       :items="visibleRoutes"
       :current-tab="activeTab"
@@ -42,27 +42,14 @@
       </div>
 
       <div v-if="showRoleMenu" class="absolute right-6 top-20 z-40 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-        <p class="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Changer de rôle</p>
-        <button class="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-slate-50" @click="changeRole('SUPER_ADMIN')">
-          <ShieldCheck class="mt-0.5 h-4 w-4 text-emerald-600" />
-          <div>
-            <p class="text-xs font-semibold text-slate-800">Super Admin</p>
-            <p class="text-[11px] text-slate-500">Observation stratégique & analyse</p>
-          </div>
-        </button>
-        <button class="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-slate-50" @click="changeRole('ADMIN')">
-          <UserCheck class="mt-0.5 h-4 w-4 text-blue-600" />
-          <div>
-            <p class="text-xs font-semibold text-slate-800">Admin / Commissaire</p>
-            <p class="text-[11px] text-slate-500">Gestion des blocs, places & commerçants</p>
-          </div>
-        </button>
-        <button class="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-slate-50" @click="changeRole('ACCOUNTANT')">
-          <CreditCard class="mt-0.5 h-4 w-4 text-amber-600" />
-          <div>
-            <p class="text-xs font-semibold text-slate-800">Chef Comptable</p>
-            <p class="text-[11px] text-slate-500">Guichet reçus, loyers & banques</p>
-          </div>
+        <p class="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Session</p>
+        <div class="rounded-xl bg-slate-50 px-3 py-3">
+          <p class="text-xs font-semibold text-slate-800">{{ state.currentUser.name }}</p>
+          <p class="text-[11px] text-slate-500">{{ state.currentUser.title }}</p>
+          <p class="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">{{ state.currentUser.role }}</p>
+        </div>
+        <button class="mt-2 flex w-full items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50" @click="logout">
+          Se déconnecter
         </button>
       </div>
 
@@ -204,18 +191,44 @@
     </div>
   </div>
 
+  <div v-else-if="ready" class="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4 text-slate-700">
+    <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl">
+      <div class="mb-6 text-center">
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center bg-[#1B2CC1] text-2xl font-bold text-white">M</div>
+        <h1 class="text-xl font-bold text-slate-900">Connexion API</h1>
+        <p class="mt-1 text-sm text-slate-500">Connectez-vous pour charger les données du backend Laravel.</p>
+      </div>
+
+      <form class="space-y-4" @submit.prevent="submitLogin">
+        <label class="block">
+          <span class="mb-1 block text-xs font-semibold text-slate-700">Identifiant</span>
+          <input v-model="loginForm.login" type="text" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:outline-none" autocomplete="username" required>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-semibold text-slate-700">Mot de passe</span>
+          <input v-model="loginForm.password" type="password" class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm focus:bg-white focus:outline-none" autocomplete="current-password" required>
+        </label>
+
+        <p v-if="loginError" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{{ loginError }}</p>
+
+        <button type="submit" :disabled="isLoggingIn" class="w-full rounded-xl bg-[#1B2CC1] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#152399] disabled:cursor-not-allowed disabled:opacity-60">
+          {{ isLoggingIn ? 'Connexion...' : 'Se connecter' }}
+        </button>
+      </form>
+    </div>
+  </div>
+
   <div v-else class="flex h-screen items-center justify-center bg-slate-50 text-slate-600">
-    Chargement du tableau de bord...
+    Chargement de la session...
   </div>
 </template>
 
 <script setup>
-import { computed, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   Banknote,
   Building2,
-  CreditCard,
   DollarSign,
   FileWarning,
   Grid,
@@ -224,8 +237,6 @@ import {
   Percent,
   Receipt,
   Repeat2,
-  ShieldCheck,
-  UserCheck,
   Users,
   Wallet,
 } from 'lucide-vue-next';
@@ -247,7 +258,7 @@ import MarketSettings from './components/settings/MarketSettings.vue';
 import UsersManager from './components/users/UsersManager.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
-import { getVisibleRoutes, getPathFromTab } from './config/api.js';
+import { getVisibleRoutes } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
 
@@ -269,6 +280,12 @@ const totalTransactions = marketStore.totalTransactions;
 const totalBanked = marketStore.totalBanked;
 const roleAbbr = marketStore.roleAbbr;
 const activeTab = computed(() => state.activeTab);
+const loginForm = reactive({
+  login: '',
+  password: '',
+});
+const isLoggingIn = ref(false);
+const loginError = ref('');
 
 const iconForTab = (tab) => {
   if (tab.startsWith('dashboard')) {
@@ -296,15 +313,32 @@ const visibleRoutes = computed(() =>
   }))
 );
 
-const changeRole = (role) => {
-  marketStore.changeRole(role);
-  router.push(getPathFromTab(state.activeTab));
-};
 const toggleSidebar = () => marketStore.toggleSidebar();
 const toggleRoleMenu = () => marketStore.toggleRoleMenu();
 const toggleNotifications = () => marketStore.toggleNotifications();
 const onReset = () => marketStore.resetToDefaults();
+const logout = async () => {
+  await marketStore.logout();
+  await router.replace('/');
+};
 const money = (value) => formatCurrency(value, 'FBu');
+
+async function submitLogin() {
+  isLoggingIn.value = true;
+  loginError.value = '';
+
+  try {
+    await marketStore.login({
+      login: loginForm.login,
+      password: loginForm.password,
+    });
+    await router.replace('/dashboard');
+  } catch (error) {
+    loginError.value = error?.message || 'Connexion impossible.';
+  } finally {
+    isLoggingIn.value = false;
+  }
+}
 
 watch(
   () => route.path,

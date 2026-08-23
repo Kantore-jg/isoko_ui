@@ -7,7 +7,50 @@ import {
   getTabFromPath,
   getVisibleRoutes,
 } from '../config/api.js';
-import { loadMarketState, resetMarketState, saveMarketState } from '../services/marketService.js';
+import { downloadBlob, getStoredToken, setStoredToken } from '../services/apiClient.js';
+import {
+  createMerchantApi,
+  createAssignmentApi,
+  createBlockApi,
+  createPaymentApi,
+  createPlaceApi,
+  dashboardSummaryApi,
+  deleteBlockApi,
+  deleteMerchantApi,
+  deletePlaceApi,
+  listApi,
+  listMerchantsApi,
+  listPaymentsApi,
+  listReceiptsApi,
+  loginApi,
+  logoutApi,
+  meApi,
+  importExcelApi,
+  exportExcelApi,
+  templateExcelApi,
+  cancelReceiptApi,
+  terminateAssignmentApi,
+  settingsApi,
+  updateSettingsApi,
+  updateBlockApi,
+  updateMerchantApi,
+  updatePlaceApi,
+  voidPaymentApi,
+} from '../services/marketApi.js';
+import {
+  mapAssignment,
+  mapAuditLog,
+  mapBank,
+  mapBlock,
+  mapCurrentUser,
+  mapMarket,
+  mapMerchant,
+  mapMovement,
+  mapObligation,
+  mapPayment,
+  mapPlace,
+  mapReceipt,
+} from '../services/apiMappers.js';
 
 const monthNames = getMonthNames();
 
@@ -16,6 +59,8 @@ const state = reactive({
   activeTab: 'dashboard-super',
   sidebarCollapsed: false,
   market: null,
+  dashboardSummary: null,
+  settings: [],
   users: [],
   blocks: [],
   places: [],
@@ -25,9 +70,12 @@ const state = reactive({
   obligations: [],
   banks: [],
   payments: [],
+  receipts: [],
   auditLogs: [],
   selectedReceipt: null,
   isNewPaymentModalOpen: false,
+  authError: '',
+  authToken: '',
 });
 
 const ready = ref(false);
@@ -41,6 +89,8 @@ function snapshotState() {
     activeTab: state.activeTab,
     sidebarCollapsed: state.sidebarCollapsed,
     market: state.market,
+    dashboardSummary: state.dashboardSummary,
+    settings: state.settings,
     users: state.users,
     blocks: state.blocks,
     places: state.places,
@@ -50,6 +100,7 @@ function snapshotState() {
     obligations: state.obligations,
     banks: state.banks,
     payments: state.payments,
+    receipts: state.receipts,
     auditLogs: state.auditLogs,
   };
 }
@@ -59,11 +110,29 @@ function createId(prefix) {
 }
 
 function persist() {
-  saveMarketState(snapshotState()).catch(() => {});
+  try {
+    window.localStorage.setItem('market-management-ui-state', JSON.stringify(snapshotState()));
+  } catch {
+    //
+  }
 }
 
-function applySeed(payload) {
-  Object.assign(state, payload);
+function applyApiState(payload) {
+  state.currentUser = payload.currentUser;
+  state.market = payload.market;
+  state.dashboardSummary = payload.dashboardSummary || null;
+  state.settings = payload.settings || [];
+  state.users = payload.users || [];
+  state.blocks = payload.blocks || [];
+  state.places = payload.places || [];
+  state.merchants = payload.merchants || [];
+  state.assignments = payload.assignments || [];
+  state.movements = payload.movements || [];
+  state.obligations = payload.obligations || [];
+  state.banks = payload.banks || [];
+  state.payments = payload.payments || [];
+  state.receipts = payload.receipts || [];
+  state.auditLogs = payload.auditLogs || [];
   state.activeTab = getTabFromPath(window.location.pathname);
   const role = state.currentUser?.role || 'SUPER_ADMIN';
   if (!getVisibleRoutes(role).some((route) => route.tab === state.activeTab)) {
@@ -71,40 +140,281 @@ function applySeed(payload) {
   }
 }
 
-async function init() {
-  applySeed(await loadMarketState());
-  ready.value = true;
-  await persist();
-}
+async function loadBootstrapData(options = {}) {
+  const safe = async (loader, fallback) => {
+    try {
+      return await loader();
+    } catch {
+      return fallback;
+    }
+  };
 
-function updateMarket(data) {
-  state.market = { ...state.market, ...data };
-  persist();
-}
+  const [
+    meResponse,
+    settingsResponse,
+    summaryResponse,
+    blocksResponse,
+    placesResponse,
+    merchantsResponse,
+    assignmentsResponse,
+    movementsResponse,
+    obligationsResponse,
+    banksResponse,
+    paymentsResponse,
+    receiptsResponse,
+    usersResponse,
+    auditLogsResponse,
+  ] = await Promise.all([
+    options.currentUser ? Promise.resolve({ user: options.currentUser }) : meApi(),
+    safe(settingsApi, { market: null, settings: [] }),
+    safe(dashboardSummaryApi, { summary: {} }),
+    safe(() => listApi('blocks', { per_page: 1000 }), { data: [] }),
+    safe(() => listApi('places', { per_page: 1000 }), { data: [] }),
+    safe(() => listMerchantsApi({ per_page: 1000 }), { data: [] }),
+    safe(() => listApi('assignments', { per_page: 1000 }), { data: [] }),
+    safe(() => listApi('movements', { per_page: 1000 }), { data: [] }),
+    safe(() => listApi('rent-obligations', { per_page: 1000 }), { data: [] }),
+    safe(() => listApi('banks', { per_page: 1000 }), { data: [] }),
+    safe(() => listPaymentsApi({ per_page: 1000 }), { data: [] }),
+    safe(() => listReceiptsApi({ per_page: 1000 }), { data: [] }),
+    safe(() => listApi('users', { per_page: 1000 }), { data: [] }),
+    safe(() => listApi('audit-logs', { per_page: 1000 }), { data: [] }),
+  ]);
 
-function addBlock(data) {
-  state.blocks = [...state.blocks, { ...data, id: createId('blk') }];
-  state.market.totalBlocks += 1;
-  persist();
-}
+  const assignments = (assignmentsResponse.data || []).map(mapAssignment);
+  const places = (placesResponse.data || []).map(mapPlace);
+  const merchants = (merchantsResponse.data || []).map(mapMerchant);
+  const payments = (paymentsResponse.data || []).map(mapPayment);
+  const receipts = (receiptsResponse.data || []).map(mapReceipt);
+  const banks = (banksResponse.data || []).map(mapBank);
+  const obligations = (obligationsResponse.data || []).map(mapObligation);
+  const movements = (movementsResponse.data || []).map(mapMovement);
+  const users = (usersResponse.data || []).map(mapCurrentUser);
+  const auditLogs = (auditLogsResponse.data || []).map(mapAuditLog);
+  const balanceDueByMerchant = obligations.reduce((accumulator, obligation) => {
+    const key = String(obligation.merchantId || '');
+    accumulator.set(key, (accumulator.get(key) || 0) + Number(obligation.balance || 0));
+    return accumulator;
+  }, new Map());
 
-function updateBlock(id, data) {
-  state.blocks = state.blocks.map((block) => (block.id === id ? { ...block, ...data } : block));
-  persist();
-}
-
-function addPlace(data) {
-  state.places = [...state.places, { ...data, id: createId('plc') }];
-  state.market.totalPlaces += 1;
-  state.blocks = state.blocks.map((block) =>
-    block.id === data.blockId ? { ...block, totalPlaces: block.totalPlaces + 1 } : block
+  const activeAssignmentsByPlace = new Map(
+    assignments
+      .filter((assignment) => assignment.status === 'ACTIVE')
+      .map((assignment) => [assignment.placeId, assignment])
   );
-  persist();
+
+  const activeAssignmentsByMerchant = new Map(
+    assignments
+      .filter((assignment) => assignment.status === 'ACTIVE')
+      .map((assignment) => [assignment.merchantId, assignment])
+  );
+
+  const paymentTotalsByMerchant = payments.reduce((accumulator, payment) => {
+    const key = String(payment.merchantId || '');
+    accumulator.set(key, (accumulator.get(key) || 0) + Number(payment.amount || 0));
+    return accumulator;
+  }, new Map());
+
+  const paymentTotalsByBank = payments.reduce((accumulator, payment) => {
+    const key = String(payment.bankId || '');
+    accumulator.set(key, (accumulator.get(key) || 0) + Number(payment.amount || 0));
+    return accumulator;
+  }, new Map());
+
+  const placesWithAssignments = places.map((place) => {
+    const assignment = activeAssignmentsByPlace.get(place.id);
+    if (!assignment) {
+      return place;
+    }
+
+    return {
+      ...place,
+      rentPrice: assignment.rentAmount || place.rentPrice,
+      status: 'OCCUPIED',
+      currentMerchantId: assignment.merchantId,
+      currentMerchantName: assignment.merchantName,
+      currentAssignmentId: assignment.id,
+    };
+  });
+
+  const merchantsWithTotals = merchants.map((merchant) => {
+    const assignment = activeAssignmentsByMerchant.get(merchant.id);
+    return {
+      ...merchant,
+      currentPlaceId: assignment?.placeId || merchant.currentPlaceId || null,
+      currentPlaceCode: assignment?.placeCode || merchant.currentPlaceCode || '',
+      totalPaid: paymentTotalsByMerchant.get(String(merchant.id)) || merchant.totalPaid || 0,
+      balanceDue: balanceDueByMerchant.get(String(merchant.id)) || merchant.balanceDue || 0,
+    };
+  });
+
+  const banksWithTotals = banks.map((bank) => ({
+    ...bank,
+    totalCollected: paymentTotalsByBank.get(String(bank.id)) || bank.totalCollected || 0,
+    transactionCount: payments.filter((payment) => String(payment.bankId || '') === String(bank.id)).length || bank.transactionCount || 0,
+  }));
+
+  return {
+    currentUser: options.currentUser || mapCurrentUser(meResponse.user),
+    market: mapMarket(settingsResponse.market, summaryResponse.summary, settingsResponse.settings || []),
+    dashboardSummary: summaryResponse.summary || null,
+    settings: settingsResponse.settings || [],
+    users,
+    blocks: (blocksResponse.data || []).map(mapBlock),
+    places: placesWithAssignments,
+    merchants: merchantsWithTotals,
+    assignments,
+    movements,
+    obligations,
+    banks: banksWithTotals,
+    payments,
+    receipts,
+    auditLogs,
+  };
 }
 
-function updatePlace(id, data) {
-  state.places = state.places.map((place) => (place.id === id ? { ...place, ...data } : place));
+async function hydrateFromApi() {
+  const token = getStoredToken();
+
+  if (!token) {
+    state.authToken = '';
+    state.currentUser = null;
+    ready.value = true;
+    return null;
+  }
+
+  state.authToken = token;
+  const payload = await loadBootstrapData();
+  applyApiState(payload);
+  ready.value = true;
   persist();
+  return payload;
+}
+
+async function init() {
+  try {
+    await hydrateFromApi();
+  } catch (error) {
+    state.authError = error?.message || 'Impossible de charger la session.';
+    setStoredToken('');
+    state.authToken = '';
+    state.currentUser = null;
+    ready.value = true;
+  }
+}
+
+async function login(credentials) {
+  state.authError = '';
+  const response = await loginApi(credentials);
+  setStoredToken(response.access_token);
+  state.authToken = response.access_token;
+  const payload = await loadBootstrapData({
+    currentUser: mapCurrentUser(response.user),
+  });
+  applyApiState(payload);
+  state.currentUser = payload.currentUser;
+  ready.value = true;
+  persist();
+  return payload.currentUser;
+}
+
+async function logout() {
+  try {
+    await logoutApi();
+  } catch {
+    //
+  }
+
+  setStoredToken('');
+  state.authToken = '';
+  state.currentUser = null;
+  state.market = null;
+  state.dashboardSummary = null;
+  state.settings = [];
+  state.users = [];
+  state.blocks = [];
+  state.places = [];
+  state.merchants = [];
+  state.assignments = [];
+  state.movements = [];
+  state.obligations = [];
+  state.banks = [];
+  state.payments = [];
+  state.receipts = [];
+  state.auditLogs = [];
+  state.selectedReceipt = null;
+  state.isNewPaymentModalOpen = false;
+  ready.value = true;
+}
+
+async function updateMarket(data) {
+  await updateSettingsApi({
+    market: {
+      name: data.name,
+      address: data.address,
+      commune: data.city,
+      province: data.country,
+      phone: data.phone,
+      email: data.email,
+    },
+    settings: [
+      {
+        key: 'currency_code',
+        value: data.currency,
+        type: 'string',
+        description: 'Devise principale du marché',
+      },
+    ],
+  });
+  await hydrateFromApi();
+}
+
+async function addBlock(data) {
+  await createBlockApi({
+    code: data.code,
+    name: data.name,
+    description: data.description,
+    default_rent_amount: data.defaultRentPrice,
+    status: data.status || 'ACTIVE',
+  });
+  await hydrateFromApi();
+}
+
+async function updateBlock(id, data) {
+  await updateBlockApi(id, {
+    code: data.code,
+    name: data.name,
+    description: data.description,
+    default_rent_amount: data.defaultRentPrice,
+    status: data.status || 'ACTIVE',
+  });
+  await hydrateFromApi();
+}
+
+async function addPlace(data) {
+  await createPlaceApi({
+    block_id: data.blockId,
+    code: data.code,
+    name: data.name || null,
+    description: data.notes || data.description || null,
+    surface: data.surface,
+    type: data.category || 'STANDARD',
+    status: data.status || 'AVAILABLE',
+  });
+  await hydrateFromApi();
+}
+
+async function updatePlace(id, data) {
+  await updatePlaceApi(id, {
+    block_id: data.blockId,
+    code: data.code,
+    name: data.name || null,
+    description: data.notes || data.description || null,
+    surface: data.surface,
+    type: data.category || 'STANDARD',
+    status: data.status || 'AVAILABLE',
+  });
+  await hydrateFromApi();
 }
 
 function addAuditLog(action, actionLabel, details, targetId, amount, bank) {
@@ -127,12 +437,9 @@ function addAuditLog(action, actionLabel, details, targetId, amount, bank) {
   ];
 }
 
-function addMerchant(data) {
-  state.merchants = [
-    ...state.merchants,
-    { ...data, id: createId('mer'), totalPaid: 0, balanceDue: 0 },
-  ];
-  persist();
+function makeMerchantCode(name) {
+  const base = String(name || 'MRC').trim().replace(/[^A-Z0-9]+/gi, '-').toUpperCase().slice(0, 12) || 'MRC';
+  return `${base}-${Date.now().toString().slice(-6)}`;
 }
 
 function defaultTitleForRole(role) {
@@ -196,198 +503,82 @@ function setCurrentUser(userId) {
   return nextUser;
 }
 
-function updateMerchant(id, data) {
-  state.merchants = state.merchants.map((merchant) => (merchant.id === id ? { ...merchant, ...data } : merchant));
-  persist();
+async function addMerchant(data) {
+  await createMerchantApi({
+    merchant_code: makeMerchantCode(data.name),
+    business_name: data.name,
+    owner_name: data.ownerName || data.name,
+    national_id: data.cni,
+    phone: data.phone,
+    business_type: data.activity || data.category || '',
+    address: data.address || data.notes || '',
+    status: data.status || 'ACTIVE',
+    registration_date: data.registrationDate || new Date().toISOString().slice(0, 10),
+    notes: data.notes || data.address || '',
+  });
+  await hydrateFromApi();
 }
 
-function assignPlace(placeId, merchantId, startDate, rentAmount, notes = '') {
+async function updateMerchant(id, data) {
+  const merchant = state.merchants.find((item) => item.id === id);
+  await updateMerchantApi(id, {
+    merchant_code: merchant?.merchantCode || makeMerchantCode(data.name || merchant?.name),
+    business_name: data.name ?? merchant?.name,
+    owner_name: data.ownerName || data.name || merchant?.name,
+    national_id: data.cni ?? merchant?.cni,
+    phone: data.phone ?? merchant?.phone,
+    business_type: data.activity || data.category || merchant?.category || '',
+    address: data.address || data.notes || merchant?.address || '',
+    status: data.status || merchant?.status || 'ACTIVE',
+    registration_date: data.registrationDate || merchant?.registrationDate || new Date().toISOString().slice(0, 10),
+    notes: data.notes || data.address || merchant?.notes || '',
+  });
+  await hydrateFromApi();
+}
+
+async function deleteMerchant(id) {
+  await deleteMerchantApi(id);
+  await hydrateFromApi();
+}
+
+async function assignPlace(placeId, merchantId, startDate, rentAmount, notes = '') {
   const targetPlace = state.places.find((place) => place.id === placeId);
   const targetMerchant = state.merchants.find((merchant) => merchant.id === merchantId);
   if (!targetPlace || !targetMerchant) return null;
 
-  const assignmentId = createId('asg');
-  const now = new Date();
-  const createdAt = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-
-  const newAssignment = {
-    id: assignmentId,
-    placeId,
-    placeCode: targetPlace.code,
-    blockCode: targetPlace.blockCode,
-    merchantId,
-    merchantName: targetMerchant.name,
-    startDate,
-    rentAmount,
-    status: 'ACTIVE',
-    createdBy: state.currentUser?.name || 'Système',
-    createdAt,
+  const response = await createAssignmentApi({
+    place_id: placeId,
+    merchant_id: merchantId,
+    start_date: startDate,
+    rent_amount: rentAmount,
+    assignment_reason: notes || `Affectation de la place ${targetPlace.code}`,
     notes,
-  };
+  });
 
-  state.assignments = [newAssignment, ...state.assignments];
-  state.places = state.places.map((place) =>
-    place.id === placeId
-      ? {
-          ...place,
-          status: 'OCCUPIED',
-          currentMerchantId: merchantId,
-          currentMerchantName: targetMerchant.name,
-          currentAssignmentId: assignmentId,
-          rentPrice: rentAmount,
-          notes: place.notes,
-        }
-      : place
-  );
-  state.merchants = state.merchants.map((merchant) =>
-    merchant.id === merchantId
-      ? {
-          ...merchant,
-          status: 'ACTIVE',
-          currentPlaceId: placeId,
-          currentPlaceCode: targetPlace.code,
-        }
-      : merchant
-  );
-
-  state.movements = [
-    {
-      id: createId('mov'),
-      placeId,
-      placeCode: targetPlace.code,
-      date: startDate,
-      type: 'ENTRY',
-      typeLabel: 'Entrée initiale',
-      newMerchantId: merchantId,
-      newMerchantName: targetMerchant.name,
-      reason: notes || `Affectation de la place ${targetPlace.code}`,
-      executedBy: state.currentUser?.name || 'Système',
-      createdAt,
-    },
-    ...state.movements,
-  ];
-
-  state.obligations = [
-    ...state.obligations,
-    {
-      id: createId('obl'),
-      assignmentId,
-      placeId,
-      placeCode: targetPlace.code,
-      blockCode: targetPlace.blockCode,
-      merchantId,
-      merchantName: targetMerchant.name,
-      periodYear: 2026,
-      periodMonth: 8,
-      periodLabel: 'Août 2026',
-      amountExpected: rentAmount,
-      amountPaid: 0,
-      balance: rentAmount,
-      status: 'PENDING',
-      dueDate: '2026-08-10',
-    },
-  ];
-
-  addAuditLog('ASSIGNMENT_CREATED', 'Affectation Place', `Place ${targetPlace.code} affectée à ${targetMerchant.name}.`, targetPlace.code);
-  persist();
-  return newAssignment;
+  await hydrateFromApi();
+  return response.data || null;
 }
 
-function terminateAssignment(assignmentId, endDate, reason = 'Départ / Fin de contrat') {
-  const assignment = state.assignments.find((item) => item.id === assignmentId);
-  if (!assignment) return null;
+async function terminateAssignment(assignmentId, endDate, reason = 'Départ / Fin de contrat') {
+  const response = await terminateAssignmentApi(assignmentId, {
+    end_date: endDate,
+    reason,
+  });
 
-  state.assignments = state.assignments.map((item) =>
-    item.id === assignmentId ? { ...item, status: 'ENDED', endDate } : item
-  );
-  state.places = state.places.map((place) =>
-    place.id === assignment.placeId
-      ? {
-          ...place,
-          status: 'AVAILABLE',
-          currentMerchantId: undefined,
-          currentMerchantName: undefined,
-          currentAssignmentId: undefined,
-        }
-      : place
-  );
-  state.merchants = state.merchants.map((merchant) =>
-    merchant.id === assignment.merchantId
-      ? {
-          ...merchant,
-          currentPlaceId: undefined,
-          currentPlaceCode: undefined,
-        }
-      : merchant
-  );
-  state.movements = [
-    {
-      id: createId('mov'),
-      placeId: assignment.placeId,
-      placeCode: assignment.placeCode,
-      date: endDate,
-      type: 'EXIT',
-      typeLabel: 'Sortie / Libération',
-      oldMerchantId: assignment.merchantId,
-      oldMerchantName: assignment.merchantName,
-      reason,
-      executedBy: state.currentUser?.name || 'Système',
-      createdAt: `${endDate} 00:00`,
-    },
-    ...state.movements,
-  ];
-  addAuditLog('ASSIGNMENT_ENDED', 'Libération Place', `Place ${assignment.placeCode} libérée.`, assignment.placeCode);
-  persist();
-  return assignment;
+  await hydrateFromApi();
+  return response.data || null;
 }
 
-function transferPlace(merchantId, fromPlaceId, toPlaceId, date, reason, rentAmount) {
-  const fromPlace = state.places.find((place) => place.id === fromPlaceId);
-  const toPlace = state.places.find((place) => place.id === toPlaceId);
-  const merchant = state.merchants.find((item) => item.id === merchantId);
-  if (!fromPlace || !toPlace || !merchant) return null;
-
+async function transferPlace(merchantId, fromPlaceId, toPlaceId, date, reason, rentAmount) {
   const oldAssignment = state.assignments.find(
     (assignment) => assignment.merchantId === merchantId && assignment.placeId === fromPlaceId && assignment.status === 'ACTIVE'
   );
 
   if (oldAssignment) {
-    state.assignments = state.assignments.map((assignment) =>
-      assignment.id === oldAssignment.id ? { ...assignment, status: 'ENDED', endDate: date } : assignment
-    );
+    await terminateAssignment(oldAssignment.id, date, reason || 'Mutation de place');
   }
 
-  state.places = state.places.map((place) =>
-    place.id === fromPlaceId
-      ? {
-          ...place,
-          status: 'AVAILABLE',
-          currentMerchantId: undefined,
-          currentMerchantName: undefined,
-          currentAssignmentId: undefined,
-        }
-      : place
-  );
-
-  assignPlace(toPlaceId, merchantId, date, rentAmount, `Mutation depuis ${fromPlace.code}: ${reason}`);
-  state.movements = [
-    {
-      id: createId('mov'),
-      placeId: toPlaceId,
-      placeCode: toPlace.code,
-      date,
-      type: 'TRANSFER',
-      typeLabel: 'Mutation / Changement de Place',
-      newMerchantId: merchantId,
-      newMerchantName: merchant.name,
-      reason: `Transfert depuis ${fromPlace.code}. Raison: ${reason}`,
-      executedBy: state.currentUser?.name || 'Système',
-      createdAt: `${date} 00:00`,
-    },
-    ...state.movements,
-  ];
-  addAuditLog('MOVEMENT_LOGGED', 'Mutation Commerçant', `Mutation de ${merchant.name} de ${fromPlace.code} vers ${toPlace.code}.`, toPlace.code);
-  persist();
+  await assignPlace(toPlaceId, merchantId, date, rentAmount, `Mutation depuis ${fromPlaceId}: ${reason}`);
   return true;
 }
 
@@ -404,108 +595,67 @@ function updateBank(id, data) {
   persist();
 }
 
-function setSelectedReceipt(payment) {
-  state.selectedReceipt = payment;
-}
-
 function setIsNewPaymentModalOpen(open) {
   state.isNewPaymentModalOpen = open;
 }
 
-function recordPayment(data) {
-  const merchant = state.merchants.find((item) => item.id === data.merchantId);
-  const place = state.places.find((item) => item.id === data.placeId);
-  const bank = state.banks.find((item) => item.id === data.bankId);
-  const periodLabel = `${monthNames[data.periodMonth - 1] || 'Mois'} ${data.periodYear}`;
-  const now = new Date();
-  const createdAt = `${now.toISOString().slice(0, 10)} ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+function excelFileName(kind, scope) {
+  const date = new Date().toISOString().slice(0, 10);
+  return `market-${kind}-${scope}-${date}.xlsx`;
+}
 
-  const payment = {
-    id: createId('pay'),
-    receiptNumber: data.referenceNumber,
-    referenceNumber: data.referenceNumber,
-    merchantId: data.merchantId,
-    merchantName: merchant?.name || 'Commerçant',
-    placeId: data.placeId,
-    placeCode: place?.code || 'Place',
-    blockCode: place?.blockCode || 'Bloc',
-    periodYear: data.periodYear,
-    periodMonth: data.periodMonth,
-    periodLabel,
+async function exportExcel(scope = 'all') {
+  const blob = await exportExcelApi(scope);
+  downloadBlob(blob, excelFileName('export', scope));
+}
+
+async function downloadTemplate(scope = 'all') {
+  const blob = await templateExcelApi(scope);
+  downloadBlob(blob, excelFileName('template', scope));
+}
+
+async function importExcel(file, scope = 'all') {
+  const response = await importExcelApi(file, scope);
+  await hydrateFromApi();
+  return response;
+}
+
+async function recordPayment(data) {
+  const response = await createPaymentApi({
+    merchant_id: data.merchantId,
+    payment_date: data.paymentDate,
     amount: data.amount,
-    bankId: data.bankId,
-    bankName: bank?.name || 'Banque',
-    bankCode: bank?.code || 'BANQUE',
-    paymentDate: data.paymentDate,
-    recordedBy: state.currentUser?.name || 'Système',
-    recordedByRole: state.currentUser?.role || 'SUPER_ADMIN',
-    notes: data.notes,
-    createdAt,
-  };
+    bank_id: data.bankId,
+    reference_number: data.referenceNumber,
+    payment_method: data.paymentMethod || 'CASH',
+    notes: data.notes || '',
+    auto_allocate: data.autoAllocate ?? true,
+    as_of_date: data.asOfDate || data.paymentDate,
+    allocations: data.allocations?.length
+      ? data.allocations
+      : undefined,
+  });
 
-  state.payments = [payment, ...state.payments];
-  state.banks = state.banks.map((item) =>
-    item.id === data.bankId
-      ? {
-          ...item,
-          totalCollected: item.totalCollected + data.amount,
-          transactionCount: item.transactionCount + 1,
-        }
-      : item
-  );
-  state.merchants = state.merchants.map((item) =>
-    item.id === data.merchantId
-      ? {
-          ...item,
-          totalPaid: (item.totalPaid || 0) + data.amount,
-          balanceDue: Math.max(0, (item.balanceDue || 0) - data.amount),
-        }
-      : item
-  );
-
-  const currentObligation = state.obligations.find(
-    (item) =>
-      item.merchantId === data.merchantId &&
-      item.placeId === data.placeId &&
-      item.periodYear === data.periodYear &&
-      item.periodMonth === data.periodMonth
-  );
-
-  if (currentObligation) {
-    state.obligations = state.obligations.map((item) => {
-      if (item.id !== currentObligation.id) return item;
-      const amountPaid = item.amountPaid + data.amount;
-      const balance = Math.max(0, item.amountExpected - amountPaid);
-      return {
-        ...item,
-        amountPaid,
-        balance,
-        status: balance === 0 ? 'PAID' : 'PARTIAL',
-        paidAt: data.paymentDate,
-      };
-    });
-  }
-
-  state.auditLogs = [
-    {
-      id: createId('log'),
-      timestamp: createdAt,
-      userName: state.currentUser?.name || 'Système',
-      userRole: state.currentUser?.role || 'SUPER_ADMIN',
-      action: 'PAYMENT_CREATED',
-      actionLabel: 'Paiement & Reçu Enregistré',
-      targetId: payment.referenceNumber,
-      details: `Reçu ${payment.referenceNumber} (${payment.amount.toLocaleString()} FBu) encaissé pour ${payment.merchantName}.`,
-      amount: payment.amount,
-      bank: payment.bankCode,
-    },
-    ...state.auditLogs,
-  ];
-
+  const payment = mapPayment(response.data || {});
   state.selectedReceipt = payment;
   state.isNewPaymentModalOpen = false;
-  persist();
+  await hydrateFromApi();
+  state.selectedReceipt = payment;
   return payment;
+}
+
+function setSelectedReceipt(payment) {
+  state.selectedReceipt = payment;
+}
+
+async function cancelReceipt(receiptId, reason = '') {
+  await cancelReceiptApi(receiptId, { reason });
+  await hydrateFromApi();
+}
+
+async function voidPayment(paymentId, reason) {
+  await voidPaymentApi(paymentId, { void_reason: reason });
+  await hydrateFromApi();
 }
 
 function syncRoute(pathname) {
@@ -534,19 +684,16 @@ function toggleNotifications() {
 }
 
 function changeRole(role) {
-  const nextUser = state.users.find((user) => user.role === role);
-  if (!nextUser) return;
-  state.currentUser = nextUser;
-  state.activeTab = getDefaultTabForRole(role);
   showRoleMenu.value = false;
-  persist();
 }
 
 async function resetToDefaults() {
-  applySeed(await resetMarketState());
-  ready.value = true;
-  await persist();
+  await hydrateFromApi();
   window.location.assign('/');
+}
+
+async function refreshFromBackend() {
+  await hydrateFromApi();
 }
 
 const currentView = computed(() => state.activeTab);
@@ -687,6 +834,7 @@ export const marketStore = {
   updateUser,
   deleteUser,
   updateMerchant,
+  deleteMerchant,
   assignPlace,
   terminateAssignment,
   transferPlace,
@@ -695,6 +843,11 @@ export const marketStore = {
   recordPayment,
   setSelectedReceipt,
   setIsNewPaymentModalOpen,
+  cancelReceipt,
+  voidPayment,
+  exportExcel,
+  downloadTemplate,
+  importExcel,
   syncRoute,
   toggleSidebar,
   toggleRoleMenu,
@@ -702,5 +855,8 @@ export const marketStore = {
   changeRole,
   setCurrentUser,
   resetToDefaults,
+  refreshFromBackend,
+  login,
+  logout,
   getPathFromTab,
 };

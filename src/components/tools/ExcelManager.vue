@@ -149,14 +149,24 @@
           </div>
         </div>
 
+        <div class="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-xs">
+          <div>
+            <p class="font-bold text-emerald-900">Template Excel administrateur</p>
+            <p class="text-[11px] text-emerald-700">Téléchargez le modèle officiel avant de remplir les données.</p>
+          </div>
+          <button class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-emerald-700" @click="downloadTemplate">
+            Télécharger le template
+          </button>
+        </div>
+
         <div class="rounded-2xl border-2 border-dashed border-slate-300 p-8 text-center transition-colors hover:border-emerald-500">
           <UploadCloud class="mx-auto mb-2 h-10 w-10 text-emerald-600" />
           <p class="text-sm font-bold text-slate-900">Glissez-déposez votre fichier Excel</p>
-          <p class="mt-1 text-xs text-slate-500">Prend en charge les formats .xlsx et .xls</p>
+          <p class="mt-1 text-xs text-slate-500">Prend en charge le format .xlsx</p>
 
           <label class="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-700">
             <span>Sélectionner un fichier</span>
-            <input type="file" accept=".xlsx,.xls" class="hidden" @change="onFilePicked">
+            <input type="file" accept=".xlsx" class="hidden" @change="onFilePicked">
           </label>
         </div>
       </div>
@@ -207,7 +217,7 @@
         </div>
 
         <div class="flex justify-end">
-          <button class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700" :disabled="isProcessing" @click="executeImport">
+          <button class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700" :disabled="isProcessing || !selectedFile" @click="executeImport">
             <RefreshCw :class="['h-4 w-4', isProcessing ? 'animate-spin' : '']" />
             <span>{{ isProcessing ? 'Traitement...' : 'Exécuter l’import' }}</span>
           </button>
@@ -243,6 +253,7 @@ import { marketStore } from '../../store/index.js';
 const activeTab = ref('EXPORT');
 const importStep = ref(1);
 const importType = ref('PLACES');
+const selectedFile = ref(null);
 const parsedRows = ref([]);
 const isProcessing = ref(false);
 const successCount = ref(0);
@@ -258,6 +269,8 @@ const steps = [
   { n: 3, label: '3. Validation' },
   { n: 4, label: '4. Résultat' },
 ];
+
+const importScope = computed(() => (importType.value === 'PLACES' || importType.value === 'MERCHANTS' ? 'structure' : 'finance'));
 
 const previewColumns = computed(() => {
   const first = parsedRows.value[0] || {};
@@ -296,112 +309,16 @@ function rowsToCsv(rows) {
 }
 
 function downloadExport(type) {
-  const date = new Date().toISOString().slice(0, 10);
-  let filename = `Marche_Central_Rapport_${type.toUpperCase()}_${date}.csv`;
-  let rows = [];
-
-  if (type === 'places') {
-    rows = places.value.map((place) => ({
-      'Code Place': place.code,
-      Bloc: place.blockCode,
-      Catégorie: place.category,
-      'Surface (m²)': place.surface,
-      'Loyer Mensuel (FBu)': place.rentPrice,
-      Statut: place.status,
-      'Occupant Actuel': place.currentMerchantName || 'Aucun',
-    }));
-  } else if (type === 'merchants') {
-    rows = merchants.value.map((merchant) => ({
-      'Nom et Prénom': merchant.name,
-      Téléphone: merchant.phone,
-      CNI: merchant.cni,
-      Activité: merchant.activity || merchant.category,
-      'Place Occupée': merchant.currentPlaceCode || 'Aucune',
-      Statut: merchant.status,
-      'Date Enregistrement': merchant.registrationDate,
-    }));
-  } else if (type === 'payments') {
-    rows = payments.value.map((payment) => ({
-      'N° Référence Reçu': payment.referenceNumber,
-      'Date Paiement': payment.paymentDate,
-      Commerçant: payment.merchantName,
-      Place: payment.placeCode,
-      Bloc: payment.blockCode,
-      Période: payment.periodLabel,
-      Banque: payment.bankCode,
-      'Montant (FBu)': payment.amount,
-    }));
-  } else if (type === 'unpaid') {
-    rows = obligations.value
-      .filter((obligation) => obligation.status !== 'PAID')
-      .map((obligation) => ({
-        Période: obligation.periodLabel,
-        Place: obligation.placeCode,
-        Commerçant: obligation.merchantName,
-        'Montant Dû (FBu)': obligation.balance,
-        'Date Échéance': obligation.dueDate,
-        Statut: obligation.status === 'OVERDUE' ? 'Échu (Impayé)' : 'En attente',
-      }));
-  }
-
-  if (!rows.length) {
-    rows = [{ Message: 'Aucune donnée disponible' }];
-    filename = `Marche_Central_Rapport_${type.toUpperCase()}_${date}.csv`;
-  }
-
-  downloadText(filename, rowsToCsv(rows));
+  const scope = type === 'payments' || type === 'unpaid' ? 'finance' : type === 'merchants' ? 'all' : 'structure';
+  return marketStore.exportExcel(scope);
 }
 
 function downloadGlobalExport() {
-  const date = new Date().toISOString().slice(0, 10);
-  const sections = [
-    ['PLACES', places.value.map((place) => ({
-      'Code Place': place.code,
-      Bloc: place.blockCode,
-      Catégorie: place.category,
-      'Surface (m²)': place.surface,
-      'Loyer Mensuel (FBu)': place.rentPrice,
-      Statut: place.status,
-      'Occupant Actuel': place.currentMerchantName || 'Aucun',
-    }))],
-    ['COMMERÇANTS', merchants.value.map((merchant) => ({
-      'Nom et Prénom': merchant.name,
-      Téléphone: merchant.phone,
-      CNI: merchant.cni,
-      Activité: merchant.activity || merchant.category,
-      'Place Occupée': merchant.currentPlaceCode || 'Aucune',
-      Statut: merchant.status,
-      'Date Enregistrement': merchant.registrationDate,
-    }))],
-    ['PAIEMENTS', payments.value.map((payment) => ({
-      'N° Référence Reçu': payment.referenceNumber,
-      'Date Paiement': payment.paymentDate,
-      Commerçant: payment.merchantName,
-      Place: payment.placeCode,
-      Bloc: payment.blockCode,
-      Période: payment.periodLabel,
-      Banque: payment.bankCode,
-      'Montant (FBu)': payment.amount,
-    }))],
-    ['IMPAYÉS', obligations.value.filter((obligation) => obligation.status !== 'PAID').map((obligation) => ({
-      Période: obligation.periodLabel,
-      Place: obligation.placeCode,
-      Commerçant: obligation.merchantName,
-      'Montant Dû (FBu)': obligation.balance,
-      'Date Échéance': obligation.dueDate,
-      Statut: obligation.status === 'OVERDUE' ? 'Échu (Impayé)' : 'En attente',
-    }))],
-  ];
+  return marketStore.exportExcel('all');
+}
 
-  const payload = sections
-    .map(([title, rows]) => [
-      `# ${title}`,
-      rowsToCsv(rows.length ? rows : [{ Message: 'Aucune donnée disponible' }]),
-      '',
-    ].join('\n'))
-    .join('\n');
-
-  downloadText(`Marche_Central_Rapport_GLOBAL_${date}.csv`, payload);
+function downloadTemplate() {
+  return marketStore.downloadTemplate(importScope.value);
 }
 
 function resetImport() {
@@ -409,11 +326,14 @@ function resetImport() {
   parsedRows.value = [];
   isProcessing.value = false;
   successCount.value = 0;
+  selectedFile.value = null;
 }
 
 function onFilePicked(event) {
   const file = event.target.files?.[0];
   if (!file) return;
+
+  selectedFile.value = file;
 
   // Fallback frontend preview: we keep the wizard structure even without xlsx parsing.
   parsedRows.value = [
@@ -424,12 +344,14 @@ function onFilePicked(event) {
   importStep.value = 2;
 }
 
-function executeImport() {
+async function executeImport() {
   isProcessing.value = true;
-  window.setTimeout(() => {
-    successCount.value = parsedRows.value.length;
-    isProcessing.value = false;
+  try {
+    const response = await marketStore.importExcel(selectedFile.value, importScope.value);
+    successCount.value = response?.data?.summary?.successful_rows ?? 0;
     importStep.value = 4;
-  }, 600);
+  } finally {
+    isProcessing.value = false;
+  }
 }
 </script>

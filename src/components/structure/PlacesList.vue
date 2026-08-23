@@ -336,7 +336,7 @@ function syncBlockSelection() {
   form.category = block.category;
 }
 
-function savePlace() {
+async function savePlace() {
   const block = blocks.value.find((item) => item.id === form.blockId);
   if (!block) return;
 
@@ -352,9 +352,9 @@ function savePlace() {
   };
 
   if (editingPlace.value) {
-    marketStore.updatePlace(editingPlace.value.id, payload);
+    await marketStore.updatePlace(editingPlace.value.id, payload);
   } else {
-    marketStore.addPlace(payload);
+    await marketStore.addPlace(payload);
   }
 
   closeModals();
@@ -368,9 +368,9 @@ function openAssign(place) {
   assignForm.notes = '';
 }
 
-function submitAssign() {
+async function submitAssign() {
   if (!assignTarget.value) return;
-  marketStore.assignPlace(assignTarget.value.id, assignForm.merchantId, assignForm.startDate, assignForm.rentAmount, assignForm.notes);
+  await marketStore.assignPlace(assignTarget.value.id, assignForm.merchantId, assignForm.startDate, assignForm.rentAmount, assignForm.notes);
   closeModals();
 }
 
@@ -382,11 +382,11 @@ function openTransfer(place) {
   transferForm.reason = '';
 }
 
-function submitTransfer() {
+async function submitTransfer() {
   if (!transferTarget.value) return;
   const currentAssignment = marketStore.state.assignments.find((assignment) => assignment.placeId === transferTarget.value.id && assignment.status === 'ACTIVE');
   if (!currentAssignment) return;
-  marketStore.transferPlace(currentAssignment.merchantId, transferTarget.value.id, transferForm.toPlaceId, transferForm.date, transferForm.reason, transferForm.rentAmount);
+  await marketStore.transferPlace(currentAssignment.merchantId, transferTarget.value.id, transferForm.toPlaceId, transferForm.date, transferForm.reason, transferForm.rentAmount);
   closeModals();
 }
 
@@ -396,11 +396,11 @@ function openTerminate(place) {
   terminateForm.reason = 'Départ / Fin de contrat';
 }
 
-function submitTerminate() {
+async function submitTerminate() {
   if (!terminateTarget.value) return;
   const assignment = marketStore.state.assignments.find((item) => item.placeId === terminateTarget.value.id && item.status === 'ACTIVE');
   if (!assignment) return;
-  marketStore.terminateAssignment(assignment.id, terminateForm.endDate, terminateForm.reason);
+  await marketStore.terminateAssignment(assignment.id, terminateForm.endDate, terminateForm.reason);
   closeModals();
 }
 

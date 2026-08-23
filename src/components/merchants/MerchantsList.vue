@@ -257,7 +257,7 @@ function openEdit(merchant) {
   isOpen.value = true;
 }
 
-function save() {
+async function save() {
   const payload = {
     name: form.name.trim(),
     phone: form.phone.trim(),
@@ -271,9 +271,9 @@ function save() {
   };
 
   if (editingMerchant.value) {
-    marketStore.updateMerchant(editingMerchant.value.id, payload);
+    await marketStore.updateMerchant(editingMerchant.value.id, payload);
   } else {
-    marketStore.addMerchant(payload);
+    await marketStore.addMerchant(payload);
   }
 
   close();

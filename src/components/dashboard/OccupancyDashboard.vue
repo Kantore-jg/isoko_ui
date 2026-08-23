@@ -626,16 +626,16 @@ function closeModals() {
   terminateTarget.value = null;
 }
 
-function submitAssign() {
+async function submitAssign() {
   if (!assignTarget.value || !assignForm.merchantId) return;
-  marketStore.assignPlace(assignTarget.value.id, assignForm.merchantId, assignForm.startDate, assignForm.rentAmount, assignForm.notes);
+  await marketStore.assignPlace(assignTarget.value.id, assignForm.merchantId, assignForm.startDate, assignForm.rentAmount, assignForm.notes);
   selectedPlaceId.value = assignTarget.value.id;
   closeModals();
 }
 
-function submitTransfer() {
+async function submitTransfer() {
   if (!transferTarget.value || !transferForm.toPlaceId || !selectedPlace.value?.currentMerchantId) return;
-  marketStore.transferPlace(
+  await marketStore.transferPlace(
     selectedPlace.value.currentMerchantId,
     transferTarget.value.id,
     transferForm.toPlaceId,
@@ -647,10 +647,10 @@ function submitTransfer() {
   closeModals();
 }
 
-function submitTerminate() {
+async function submitTerminate() {
   const assignment = currentAssignment.value;
   if (!terminateTarget.value || !assignment) return;
-  marketStore.terminateAssignment(assignment.id, terminateForm.endDate, terminateForm.reason);
+  await marketStore.terminateAssignment(assignment.id, terminateForm.endDate, terminateForm.reason);
   closeModals();
 }
 </script>

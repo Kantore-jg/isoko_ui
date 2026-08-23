@@ -93,8 +93,8 @@ watch(
   { immediate: true }
 );
 
-function save() {
-  marketStore.updateMarket({ ...form });
+async function save() {
+  await marketStore.updateMarket({ ...form });
   saved.value = true;
   window.setTimeout(() => {
     saved.value = false;

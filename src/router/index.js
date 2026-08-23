@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { getDefaultTabForRole, getPathFromTab, ROUTES } from '../config/api.js';
+import { getStoredToken } from '../services/apiClient.js';
 import { marketStore } from '../store/index.js';
 
 const RouteStub = {
@@ -19,6 +20,10 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
+  if (!marketStore.state.currentUser && !getStoredToken() && to.path !== '/') {
+    return '/';
+  }
+
   const role = marketStore.state.currentUser?.role || 'SUPER_ADMIN';
   const allowed = to.meta.roles || [];
 

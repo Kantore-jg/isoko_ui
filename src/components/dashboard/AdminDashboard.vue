@@ -302,9 +302,9 @@ function openAssign(place) {
   assignForm.notes = '';
 }
 
-function submitAssign() {
+async function submitAssign() {
   if (!selectedPlace.value || !assignForm.merchantId) return;
-  marketStore.assignPlace(selectedPlace.value.id, assignForm.merchantId, assignForm.startDate, assignForm.rentAmount, assignForm.notes);
+  await marketStore.assignPlace(selectedPlace.value.id, assignForm.merchantId, assignForm.startDate, assignForm.rentAmount, assignForm.notes);
   selectedPlace.value = null;
 }
 </script>

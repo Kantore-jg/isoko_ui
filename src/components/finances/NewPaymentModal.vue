@@ -140,8 +140,8 @@ watch(
   { immediate: true }
 );
 
-function submit() {
-  marketStore.recordPayment({ ...form });
+async function submit() {
+  await marketStore.recordPayment({ ...form });
 }
 
 function close() {

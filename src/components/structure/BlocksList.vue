@@ -256,21 +256,19 @@ function openEdit(block) {
   isOpen.value = true;
 }
 
-function save() {
+async function save() {
   const payload = {
     code: form.code.trim(),
-    name: form.name.trim(),
+    name: `${form.code.trim()} - ${form.category.trim()}`,
     category: form.category.trim(),
     defaultRentPrice: Number(form.defaultRentPrice) || 0,
     description: form.description.trim(),
-    totalPlaces: editingBlock.value?.totalPlaces || 0,
-    marketId: editingBlock.value?.marketId || marketStore.state.market?.id,
   };
 
   if (editingBlock.value) {
-    marketStore.updateBlock(editingBlock.value.id, payload);
+    await marketStore.updateBlock(editingBlock.value.id, payload);
   } else {
-    marketStore.addBlock({ ...payload, totalPlaces: 0 });
+    await marketStore.addBlock(payload);
   }
 
   close();
