@@ -19,7 +19,7 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   if (!marketStore.state.currentUser && !getStoredToken() && to.path !== '/') {
     return '/';
   }
@@ -31,7 +31,7 @@ router.beforeEach((to) => {
     return getPathFromTab(getDefaultTabForRole(role));
   }
 
-  marketStore.syncRoute(to.path);
+  await marketStore.syncRoute(to.path);
   return true;
 });
 

@@ -104,6 +104,65 @@ const ready = ref(false);
 const searchQuery = ref('');
 const showRoleMenu = ref(false);
 const showNotifications = ref(false);
+let lastLoadedPath = '';
+
+const sharedResources = ['currentUser', 'market'];
+const pageResourceMap = {
+  'dashboard-super': ['dashboardSummary', 'blocks', 'places', 'merchants', 'assignments', 'movements', 'obligations', 'banks', 'payments', 'receipts'],
+  'dashboard-admin': ['dashboardSummary', 'blocks', 'places', 'merchants', 'assignments', 'movements'],
+  'dashboard-accountant': ['dashboardSummary', 'obligations', 'banks', 'payments', 'receipts'],
+  'dashboard-occupancy': ['dashboardSummary', 'blocks', 'places', 'merchants', 'assignments', 'movements', 'obligations'],
+  'structure-blocks': ['blocks', 'places'],
+  'structure-places': ['blocks', 'places', 'merchants', 'assignments'],
+  'merchants-list': ['merchants', 'places', 'assignments', 'payments'],
+  'merchants-assignments': ['assignments', 'places', 'merchants'],
+  'merchants-movements': ['movements', 'places', 'merchants'],
+  'finances-rents': ['obligations', 'payments', 'receipts', 'banks', 'merchants', 'places', 'assignments'],
+  'finances-payments': ['payments', 'banks', 'obligations', 'merchants', 'places'],
+  'finances-banks': ['banks', 'payments'],
+  'tools-excel': ['blocks', 'places', 'merchants', 'assignments', 'payments', 'obligations', 'banks', 'receipts'],
+  'tools-audit': ['auditLogs'],
+  'admin-users': ['users', 'roles', 'permissions'],
+  'admin-settings': ['settings'],
+};
+
+const resourceLoaders = {
+  currentUser: (options = {}) => (options.currentUser ? Promise.resolve({ user: options.currentUser }) : meApi()),
+  market: settingsApi,
+  dashboardSummary: dashboardSummaryApi,
+  blocks: () => listApi('blocks', { per_page: 1000 }),
+  places: () => listApi('places', { per_page: 1000 }),
+  merchants: () => listMerchantsApi({ per_page: 1000 }),
+  assignments: () => listApi('assignments', { per_page: 1000 }),
+  movements: () => listApi('movements', { per_page: 1000 }),
+  obligations: () => listApi('rent-obligations', { per_page: 1000 }),
+  banks: () => listBanksApi({ per_page: 1000 }),
+  payments: () => listPaymentsApi({ per_page: 1000 }),
+  receipts: () => listReceiptsApi({ per_page: 1000 }),
+  users: () => listUsersApi({ per_page: 1000 }),
+  roles: () => listRolesApi({ per_page: 1000 }),
+  permissions: () => listPermissionsApi({ per_page: 1000 }),
+  auditLogs: () => listApi('audit-logs', { per_page: 1000 }),
+};
+
+const resourceFallbacks = {
+  currentUser: { user: null },
+  market: { market: null, settings: [] },
+  dashboardSummary: { summary: {} },
+  blocks: { data: [] },
+  places: { data: [] },
+  merchants: { data: [] },
+  assignments: { data: [] },
+  movements: { data: [] },
+  obligations: { data: [] },
+  banks: { data: [] },
+  payments: { data: [] },
+  receipts: { data: [] },
+  users: { data: [] },
+  roles: { data: [] },
+  permissions: { data: [] },
+  auditLogs: { data: [] },
+};
 
 function snapshotState() {
   return {
@@ -134,6 +193,41 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}`;
 }
 
+function getPageResources(tab) {
+  return [...new Set([...(pageResourceMap[tab] || []), ...sharedResources])];
+}
+
+function clearPageResources(resources) {
+  for (const resource of resources) {
+    if (resource === 'currentUser') {
+      continue;
+    }
+
+    if (resource === 'market') {
+      state.market = null;
+      state.settings = [];
+      continue;
+    }
+
+    if (resource === 'dashboardSummary') {
+      state.dashboardSummary = null;
+      continue;
+    }
+
+    if (Array.isArray(state[resource])) {
+      state[resource] = [];
+    }
+  }
+}
+
+function listData(response) {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  return response?.data || [];
+}
+
 function persist() {
   try {
     window.localStorage.setItem('market-management-ui-state', JSON.stringify(snapshotState()));
@@ -143,23 +237,74 @@ function persist() {
 }
 
 function applyApiState(payload) {
-  state.currentUser = payload.currentUser;
-  state.market = payload.market;
-  state.dashboardSummary = payload.dashboardSummary || null;
-  state.settings = payload.settings || [];
-  state.users = payload.users || [];
-  state.roles = payload.roles || [];
-  state.permissions = payload.permissions || [];
-  state.blocks = payload.blocks || [];
-  state.places = payload.places || [];
-  state.merchants = payload.merchants || [];
-  state.assignments = payload.assignments || [];
-  state.movements = payload.movements || [];
-  state.obligations = payload.obligations || [];
-  state.banks = payload.banks || [];
-  state.payments = payload.payments || [];
-  state.receipts = payload.receipts || [];
-  state.auditLogs = payload.auditLogs || [];
+  if (Object.prototype.hasOwnProperty.call(payload, 'currentUser')) {
+    state.currentUser = payload.currentUser;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'market')) {
+    state.market = payload.market;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'dashboardSummary')) {
+    state.dashboardSummary = payload.dashboardSummary || null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'settings')) {
+    state.settings = payload.settings || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'users')) {
+    state.users = payload.users || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'roles')) {
+    state.roles = payload.roles || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'permissions')) {
+    state.permissions = payload.permissions || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'blocks')) {
+    state.blocks = payload.blocks || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'places')) {
+    state.places = payload.places || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'merchants')) {
+    state.merchants = payload.merchants || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'assignments')) {
+    state.assignments = payload.assignments || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'movements')) {
+    state.movements = payload.movements || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'obligations')) {
+    state.obligations = payload.obligations || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'banks')) {
+    state.banks = payload.banks || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'payments')) {
+    state.payments = payload.payments || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'receipts')) {
+    state.receipts = payload.receipts || [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'auditLogs')) {
+    state.auditLogs = payload.auditLogs || [];
+  }
+
   state.activeTab = getTabFromPath(window.location.pathname);
   const role = state.currentUser?.role || 'SUPER_ADMIN';
   if (!getVisibleRoutes(role).some((route) => route.tab === state.activeTab)) {
@@ -168,7 +313,13 @@ function applyApiState(payload) {
 }
 
 async function loadBootstrapData(options = {}) {
+  const tab = options.tab || state.activeTab || getTabFromPath(window.location.pathname);
+  const resources = getPageResources(tab);
   const issues = [];
+  const responses = {};
+
+  clearPageResources(resources.filter((resource) => resource !== 'currentUser' && resource !== 'market'));
+
   const safe = async (loader, fallback, label) => {
     try {
       return await loader();
@@ -178,54 +329,50 @@ async function loadBootstrapData(options = {}) {
     }
   };
 
-  const [
-    meResponse,
-    settingsResponse,
-    summaryResponse,
-    blocksResponse,
-    placesResponse,
-    merchantsResponse,
-    assignmentsResponse,
-    movementsResponse,
-    obligationsResponse,
-    banksResponse,
-    paymentsResponse,
-    receiptsResponse,
-    usersResponse,
-    rolesResponse,
-    permissionsResponse,
-    auditLogsResponse,
-  ] = await Promise.all([
-    options.currentUser ? Promise.resolve({ user: options.currentUser }) : meApi(),
-    safe(settingsApi, { market: null, settings: [] }, 'settings'),
-    safe(dashboardSummaryApi, { summary: {} }, 'dashboard'),
-    safe(() => listApi('blocks', { per_page: 1000 }), { data: [] }, 'blocks'),
-    safe(() => listApi('places', { per_page: 1000 }), { data: [] }, 'places'),
-    safe(() => listMerchantsApi({ per_page: 1000 }), { data: [] }, 'merchants'),
-    safe(() => listApi('assignments', { per_page: 1000 }), { data: [] }, 'assignments'),
-    safe(() => listApi('movements', { per_page: 1000 }), { data: [] }, 'movements'),
-    safe(() => listApi('rent-obligations', { per_page: 1000 }), { data: [] }, 'obligations'),
-    safe(() => listBanksApi({ per_page: 1000 }), { data: [] }, 'banks'),
-    safe(() => listPaymentsApi({ per_page: 1000 }), { data: [] }, 'payments'),
-    safe(() => listReceiptsApi({ per_page: 1000 }), { data: [] }, 'receipts'),
-    safe(() => listUsersApi({ per_page: 1000 }), { data: [] }, 'users'),
-    safe(() => listRolesApi({ per_page: 1000 }), { data: [] }, 'roles'),
-    safe(() => listPermissionsApi({ per_page: 1000 }), { data: [] }, 'permissions'),
-    safe(() => listApi('audit-logs', { per_page: 1000 }), { data: [] }, 'audit-logs'),
-  ]);
+  await Promise.all(resources.map(async (resource) => {
+    const loader = resourceLoaders[resource];
+    if (!loader) {
+      return;
+    }
 
-  const assignments = (assignmentsResponse.data || []).map(mapAssignment);
-  const places = (placesResponse.data || []).map(mapPlace);
-  const merchants = (merchantsResponse.data || []).map(mapMerchant);
-  const payments = (paymentsResponse.data || []).map(mapPayment);
-  const receipts = (receiptsResponse.data || []).map(mapReceipt);
-  const banks = (banksResponse.data || []).map(mapBank);
-  const obligations = (obligationsResponse.data || []).map(mapObligation);
-  const movements = (movementsResponse.data || []).map(mapMovement);
-  const users = (usersResponse.data || []).map(mapCurrentUser);
-  const roles = (rolesResponse.data || []).map(mapRole);
-  const permissions = (permissionsResponse.data || []).map(mapPermission);
-  const auditLogs = (auditLogsResponse.data || []).map(mapAuditLog);
+    responses[resource] = await safe(
+      resource === 'currentUser'
+        ? () => loader(options)
+        : loader,
+      resourceFallbacks[resource],
+      resource
+    );
+  }));
+
+  const meResponse = responses.currentUser || resourceFallbacks.currentUser;
+  const settingsResponse = responses.market || resourceFallbacks.market;
+  const summaryResponse = responses.dashboardSummary || resourceFallbacks.dashboardSummary;
+  const blocksResponse = responses.blocks || resourceFallbacks.blocks;
+  const placesResponse = responses.places || resourceFallbacks.places;
+  const merchantsResponse = responses.merchants || resourceFallbacks.merchants;
+  const assignmentsResponse = responses.assignments || resourceFallbacks.assignments;
+  const movementsResponse = responses.movements || resourceFallbacks.movements;
+  const obligationsResponse = responses.obligations || resourceFallbacks.obligations;
+  const banksResponse = responses.banks || resourceFallbacks.banks;
+  const paymentsResponse = responses.payments || resourceFallbacks.payments;
+  const receiptsResponse = responses.receipts || resourceFallbacks.receipts;
+  const usersResponse = responses.users || resourceFallbacks.users;
+  const rolesResponse = responses.roles || resourceFallbacks.roles;
+  const permissionsResponse = responses.permissions || resourceFallbacks.permissions;
+  const auditLogsResponse = responses.auditLogs || resourceFallbacks.auditLogs;
+
+  const assignments = listData(assignmentsResponse).map(mapAssignment);
+  const places = listData(placesResponse).map(mapPlace);
+  const merchants = listData(merchantsResponse).map(mapMerchant);
+  const payments = listData(paymentsResponse).map(mapPayment);
+  const receipts = listData(receiptsResponse).map(mapReceipt);
+  const banks = listData(banksResponse).map(mapBank);
+  const obligations = listData(obligationsResponse).map(mapObligation);
+  const movements = listData(movementsResponse).map(mapMovement);
+  const users = listData(usersResponse).map(mapCurrentUser);
+  const roles = listData(rolesResponse).map(mapRole);
+  const permissions = listData(permissionsResponse).map(mapPermission);
+  const auditLogs = listData(auditLogsResponse).map(mapAuditLog);
   const balanceDueByMerchant = obligations.reduce((accumulator, obligation) => {
     const key = String(obligation.merchantId || '');
     accumulator.set(key, (accumulator.get(key) || 0) + Number(obligation.balance || 0));
@@ -297,7 +444,7 @@ async function loadBootstrapData(options = {}) {
     users,
     roles,
     permissions,
-    blocks: (blocksResponse.data || []).map(mapBlock),
+    blocks: listData(blocksResponse).map(mapBlock),
     places: placesWithAssignments,
     merchants: merchantsWithTotals,
     assignments,
@@ -313,6 +460,7 @@ async function loadBootstrapData(options = {}) {
 
 async function hydrateFromApi() {
   const token = getStoredToken();
+  const tab = state.activeTab || getTabFromPath(window.location.pathname);
 
   state.isLoadingData = true;
   state.dataError = '';
@@ -327,14 +475,13 @@ async function hydrateFromApi() {
 
   state.authToken = token;
   try {
-    const payload = await loadBootstrapData();
+    const payload = await loadBootstrapData({ tab });
     applyApiState(payload);
-    const criticalIssues = (payload.bootstrapIssues || []).filter((issue) =>
-      ['users', 'roles', 'permissions'].includes(issue.label)
-    );
+    const criticalIssues = (payload.bootstrapIssues || []).filter((issue) => issue.label);
     state.dataError = criticalIssues.length
-      ? `Certaines données administratives n'ont pas pu être chargées: ${criticalIssues.map((issue) => issue.label).join(', ')}.`
+      ? `Certaines données de la page n'ont pas pu être chargées: ${criticalIssues.map((issue) => issue.label).join(', ')}.`
       : '';
+    lastLoadedPath = window.location.pathname;
     ready.value = true;
     persist();
     return payload;
@@ -348,6 +495,7 @@ async function hydrateFromApi() {
 
 async function init() {
   try {
+    state.activeTab = getTabFromPath(window.location.pathname);
     await hydrateFromApi();
   } catch (error) {
     state.authError = error?.message || 'Impossible de charger la session.';
@@ -367,17 +515,18 @@ async function login(credentials) {
     const response = await loginApi(credentials);
     setStoredToken(response.access_token);
     state.authToken = response.access_token;
+    state.activeTab = getTabFromPath(window.location.pathname);
     const payload = await loadBootstrapData({
+      tab: state.activeTab,
       currentUser: mapCurrentUser(response.user),
     });
     applyApiState(payload);
-    const criticalIssues = (payload.bootstrapIssues || []).filter((issue) =>
-      ['users', 'roles', 'permissions'].includes(issue.label)
-    );
+    const criticalIssues = (payload.bootstrapIssues || []).filter((issue) => issue.label);
     state.dataError = criticalIssues.length
-      ? `Certaines données administratives n'ont pas pu être chargées: ${criticalIssues.map((issue) => issue.label).join(', ')}.`
+      ? `Certaines données de la page n'ont pas pu être chargées: ${criticalIssues.map((issue) => issue.label).join(', ')}.`
       : '';
     state.currentUser = payload.currentUser;
+    lastLoadedPath = window.location.pathname;
     ready.value = true;
     persist();
     return payload.currentUser;
@@ -815,7 +964,7 @@ async function voidPayment(paymentId, reason) {
   await hydrateFromApi();
 }
 
-function syncRoute(pathname) {
+async function syncRoute(pathname) {
   const nextTab = getTabFromPath(pathname);
   state.activeTab = nextTab;
   const role = state.currentUser?.role || 'SUPER_ADMIN';
@@ -823,6 +972,12 @@ function syncRoute(pathname) {
     state.activeTab = getDefaultTabForRole(role);
   }
   persist();
+
+  if (pathname === lastLoadedPath) {
+    return;
+  }
+
+  await hydrateFromApi();
 }
 
 function toggleSidebar() {

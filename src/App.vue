@@ -197,7 +197,7 @@
 
 <script setup>
 import { computed, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import {
   Banknote,
   Building2,
@@ -235,10 +235,10 @@ import DataStatePanel from './components/common/DataStatePanel.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes } from './config/api.js';
+import { getPathFromTab } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
 
-const route = useRoute();
 const router = useRouter();
 
 const state = marketStore.state;
@@ -254,6 +254,17 @@ const monthlyTrends = marketStore.monthlyTrends;
 const overdueMerchants = marketStore.overdueMerchants;
 const roleAbbr = marketStore.roleAbbr;
 const activeTab = computed(() => state.activeTab);
+
+watch(
+  activeTab,
+  async (tab) => {
+    const targetPath = getPathFromTab(tab);
+    if (targetPath && router.currentRoute.value.path !== targetPath) {
+      await router.replace(targetPath);
+    }
+  },
+  { immediate: true }
+);
 
 const iconForTab = (tab) => {
   if (tab.startsWith('dashboard')) {
@@ -290,12 +301,4 @@ const logout = async () => {
   await router.replace('/');
 };
 const money = (value) => formatCurrency(value, 'FBu');
-
-watch(
-  () => route.path,
-  (path) => {
-    marketStore.syncRoute(path);
-  },
-  { immediate: true }
-);
 </script>

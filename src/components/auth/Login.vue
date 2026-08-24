@@ -5,7 +5,7 @@
     <div class="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white/95 p-8 shadow-2xl backdrop-blur-sm">
       <div class="mb-6 text-center">
         <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center bg-[#1B2CC1] text-2xl font-bold text-white">M</div>
-        <h1 class="text-xl font-bold text-slate-900">Connexion API</h1>
+        <h1 class="text-xl font-bold text-slate-900">Connexion</h1>
         <p class="mt-1 text-sm text-slate-500">Connectez-vous pour charger les données du backend Laravel.</p>
       </div>
 

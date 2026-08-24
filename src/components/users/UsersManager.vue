@@ -269,7 +269,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import DataStatePanel from '../common/DataStatePanel.vue';
 import RolesPermissionsManager from '../admin/RolesPermissionsManager.vue';
 import { marketStore } from '../../store/index.js';
@@ -329,14 +329,6 @@ function roleLabel(role) {
   if (role === 'ACCOUNTANT') return 'Comptable';
   return role;
 }
-
-onMounted(async () => {
-  try {
-    await marketStore.refreshFromBackend();
-  } catch {
-    //
-  }
-});
 
 function resetForm() {
   form.name = '';
