@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { getDefaultTabForRole, getPathFromTab, getTabFromPath, getVisibleRoutes, ROUTES } from '../config/api.js';
+import { getDefaultTabForRole, getPathFromTab, getVisibleRoutes, ROUTES } from '../config/api.js';
 import { getStoredToken } from '../services/apiClient.js';
 import { marketStore } from '../store/index.js';
 
@@ -36,16 +36,10 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach((to) => {
   // Redirige vers login si pas de token et hors de la page racine
   if (!marketStore.state.currentUser && !getStoredToken() && to.path !== '/') {
     return '/';
-  }
-
-  // Synchronise l'onglet actif dans le store selon l'URL
-  const tab = getTabFromPath(to.path) || to.meta.tab;
-  if (tab) {
-    marketStore.state.activeTab = tab;
   }
 
   // Contrôle d'accès par rôle
@@ -54,10 +48,10 @@ router.beforeEach(async (to) => {
   if (allowed.length > 0 && !allowed.includes(role)) {
     return getPathFromTab(getDefaultTabForRole(role));
   }
+});
 
-  // Charge les données de la page
-  await marketStore.syncRoute(to.path);
-  return true;
+router.afterEach((to) => {
+  void marketStore.syncRoute(to.path);
 });
 
 export default router;

@@ -75,7 +75,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { RouterView, useRouter } from 'vue-router';
+import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   Building2,
   DollarSign,
@@ -89,11 +89,12 @@ import Navbar from './components/layout/Navbar.vue';
 import Login from './components/auth/Login.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
-import { getVisibleRoutes } from './config/api.js';
+import { getTabFromPath, getVisibleRoutes } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
 
 const router = useRouter();
+const route = useRoute();
 
 const state            = marketStore.state;
 const ready            = marketStore.ready;
@@ -105,7 +106,7 @@ const overdueCount     = marketStore.overdueCount;
 const overdueMerchants = marketStore.overdueMerchants;
 const roleAbbr         = marketStore.roleAbbr;
 
-const activeTab = computed(() => state.activeTab);
+const activeTab = computed(() => getTabFromPath(route.path));
 
 const iconForTab = (tab) => {
   if (tab.startsWith('dashboard')) {

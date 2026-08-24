@@ -977,7 +977,7 @@ async function syncRoute(pathname) {
     return;
   }
 
-  await hydrateFromApi();
+  void hydrateFromApi().catch(() => {});
 }
 
 function toggleSidebar() {
