@@ -23,12 +23,13 @@
         @toggle-notifications="toggleNotifications"
       />
 
+      <!-- Panneau Notifications -->
       <div v-if="showNotifications" class="absolute right-6 top-20 z-40 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
         <div class="flex items-center justify-between border-b border-slate-100 pb-2">
           <h3 class="text-xs font-semibold text-slate-800">Alertes Loyers</h3>
           <span class="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">{{ overdueCount }} impayés</span>
         </div>
-        <div class="mt-3 space-y-2 max-h-60 overflow-y-auto">
+        <div class="mt-3 max-h-60 space-y-2 overflow-y-auto">
           <article v-for="item in overdueMerchants.slice(0, 5)" :key="item.merchant.id" class="rounded-xl border border-slate-100 bg-slate-50 p-3">
             <p class="text-xs font-semibold text-slate-800">{{ item.merchant.name }}</p>
             <p class="text-[11px] text-slate-500">{{ item.placeCode }} • {{ item.blockCode }}</p>
@@ -36,11 +37,12 @@
           </article>
           <p v-if="!overdueMerchants.length" class="text-xs text-slate-500">Aucune alerte active.</p>
         </div>
-        <button class="mt-3 w-full text-center text-xs font-semibold text-emerald-600 hover:underline" @click="navigate('/finances/rents')">
+        <button class="mt-3 w-full text-center text-xs font-semibold text-emerald-600 hover:underline" @click="router.push('/finances/rents')">
           Voir tous les loyers
         </button>
       </div>
 
+      <!-- Panneau Rôle / Session -->
       <div v-if="showRoleMenu" class="absolute right-6 top-20 z-40 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
         <p class="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Session</p>
         <div class="rounded-xl bg-slate-50 px-3 py-3">
@@ -53,136 +55,12 @@
         </button>
       </div>
 
+      <!-- Contenu principal — router-view remplace les v-else-if -->
       <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-        <div class="mx-auto max-w-7xl space-y-6">
-          <section v-if="currentView === 'dashboard-super'" class="space-y-6">
-            <DataStatePanel
-              :loading="state.isLoadingData"
-              :error="state.dataError"
-              :empty="!state.isLoadingData && !state.dataError && (!state.market || !state.blocks.length)"
-              title="Tableau de bord"
-              loading-message="Chargement du tableau de bord..."
-              error-message="Impossible de charger les indicateurs."
-              empty-message="Les indicateurs de synthèse ne sont pas encore disponibles."
-            />
-
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard label="Loyers attendus" :value="money(kpis.expectedMonthly)" helper="Ce mois-ci" tone-class="bg-emerald-50 text-emerald-700">
-                <template #icon><DollarSign class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Loyers encaissés" :value="money(kpis.obtainedMonthly)" helper="Août 2026" tone-class="bg-blue-50 text-blue-700">
-                <template #icon><Receipt class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Taux d'occupation" :value="`${kpis.occupancyRate}%`" helper="Places occupées" tone-class="bg-amber-50 text-amber-700">
-                <template #icon><Grid class="h-5 w-5" /></template>
-              </MetricCard>
-              <MetricCard label="Commerçants actifs" :value="String(kpis.activeMerchants)" helper="Sur l’ensemble" tone-class="bg-slate-100 text-slate-700">
-                <template #icon><Users class="h-5 w-5" /></template>
-              </MetricCard>
-            </div>
-
-            <div class="grid gap-6 xl:grid-cols-3">
-              <div class="xl:col-span-2 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="mb-4 flex items-center justify-between">
-                  <div>
-                    <h2 class="text-sm font-bold text-slate-900">Évolution Financière Mensuelle</h2>
-                    <p class="text-xs text-slate-500">Vue consolidée 2026</p>
-                  </div>
-                  <span class="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Dashboard</span>
-                </div>
-                <div class="space-y-3">
-                  <div v-for="trend in monthlyTrends" :key="trend.month" class="grid grid-cols-[70px_1fr_70px] items-center gap-3">
-                    <span class="text-xs font-semibold text-slate-600">{{ trend.month }}</span>
-                    <div class="h-3 overflow-hidden bg-slate-100">
-                      <div class="h-full bg-gradient-to-r from-[#1B2CC1] to-[#ABD2FA]" :style="{ width: `${trend.rate}%` }" />
-                    </div>
-                    <span class="text-right text-xs font-bold text-slate-900">{{ trend.rate }}%</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 class="text-sm font-bold text-slate-900">Alertes Loyers</h2>
-                <p class="mt-1 text-xs text-slate-500">{{ overdueCount }} impayé(s)</p>
-                <div class="mt-4 space-y-3">
-                  <article v-for="item in overdueMerchants.slice(0, 4)" :key="item.merchant.id" class="rounded-2xl border border-amber-100 bg-amber-50/70 p-3">
-                    <p class="text-xs font-bold text-slate-900">{{ item.merchant.name }}</p>
-                    <p class="text-[11px] text-slate-600">{{ item.placeCode }} • {{ item.blockCode }}</p>
-                    <p class="mt-1 text-[11px] font-semibold text-amber-700">{{ money(item.totalOverdue) }} dû</p>
-                  </article>
-                  <p v-if="!overdueMerchants.length" class="text-xs text-slate-500">Aucun impayé détecté.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <AdminDashboard v-else-if="currentView === 'dashboard-admin'" />
-
-          <AccountantDashboard v-else-if="currentView === 'dashboard-accountant'" />
-
-          <OccupancyDashboard v-else-if="currentView === 'dashboard-occupancy'" />
-
-          <BlocksList v-else-if="currentView === 'structure-blocks'" />
-
-          <PlacesList v-else-if="currentView === 'structure-places'" />
-
-          <MerchantsList v-else-if="currentView === 'merchants-list'" />
-
-          <AssignmentsList v-else-if="currentView === 'merchants-assignments'" />
-
-          <MovementsList v-else-if="currentView === 'merchants-movements'" />
-
-          <PaymentsList v-else-if="currentView === 'finances-payments'" />
-
-          <section v-else-if="currentView === 'finances-rents'" class="space-y-6">
-            <RentObligationsList />
-            <ReceiptsList />
-          </section>
-
-          <BanksList v-else-if="currentView === 'finances-banks'" />
-
-          <ExcelManager v-else-if="currentView === 'tools-excel'" />
-
-          <section v-else-if="currentView === 'tools-audit'" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 class="text-sm font-bold text-slate-900">Journal d’audit</h2>
-            <DataStatePanel
-              class="mt-4"
-              :loading="state.isLoadingData"
-              :error="state.dataError"
-              :empty="!state.isLoadingData && !state.dataError && state.auditLogs.length === 0"
-              title="Audit"
-              loading-message="Chargement du journal d’audit..."
-              error-message="Impossible de charger le journal d’audit."
-              empty-message="Aucune entrée d’audit pour le moment."
-            />
-            <div v-if="!state.isLoadingData && !state.dataError && state.auditLogs.length > 0" class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-              <table class="min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">Date</th>
-                    <th class="px-4 py-3">Action</th>
-                    <th class="px-4 py-3">Détails</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                  <tr v-for="log in state.auditLogs" :key="log.id">
-                    <td class="px-4 py-3">{{ log.timestamp }}</td>
-                    <td class="px-4 py-3 font-semibold text-slate-900">{{ log.actionLabel }}</td>
-                    <td class="px-4 py-3">{{ log.details }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section v-else-if="currentView === 'admin-users'" class="space-y-6">
-            <UsersManager />
-          </section>
-
-          <MarketSettings v-else-if="currentView === 'admin-settings'" />
-        </div>
+        <RouterView />
       </main>
 
+      <!-- Modales globales -->
       <NewPaymentModal />
       <ReceiptModal />
     </div>
@@ -196,81 +74,44 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
+import { RouterView, useRouter } from 'vue-router';
 import {
-  Banknote,
   Building2,
   DollarSign,
-  FileWarning,
   Grid,
-  Landmark,
   MapPin,
-  Percent,
   Receipt,
-  Repeat2,
   Users,
-  Wallet,
 } from 'lucide-vue-next';
 import Sidebar from './components/layout/Sidebar.vue';
 import Navbar from './components/layout/Navbar.vue';
-import MetricCard from './components/common/MetricCard.vue';
-import AdminDashboard from './components/dashboard/AdminDashboard.vue';
-import OccupancyDashboard from './components/dashboard/OccupancyDashboard.vue';
-import ExcelManager from './components/tools/ExcelManager.vue';
-import AccountantDashboard from './components/dashboard/AccountantDashboard.vue';
-import BlocksList from './components/structure/BlocksList.vue';
-import PlacesList from './components/structure/PlacesList.vue';
-import MerchantsList from './components/merchants/MerchantsList.vue';
-import AssignmentsList from './components/merchants/AssignmentsList.vue';
-import MovementsList from './components/merchants/MovementsList.vue';
-import BanksList from './components/finances/BanksList.vue';
-import PaymentsList from './components/finances/PaymentsList.vue';
-import ReceiptsList from './components/finances/ReceiptsList.vue';
-import RentObligationsList from './components/finances/RentObligationsList.vue';
-import MarketSettings from './components/settings/MarketSettings.vue';
-import UsersManager from './components/users/UsersManager.vue';
 import Login from './components/auth/Login.vue';
-import DataStatePanel from './components/common/DataStatePanel.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
 import { getVisibleRoutes } from './config/api.js';
-import { getPathFromTab } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
 
 const router = useRouter();
 
-const state = marketStore.state;
-const ready = marketStore.ready;
-const showRoleMenu = marketStore.showRoleMenu;
+const state            = marketStore.state;
+const ready            = marketStore.ready;
+const showRoleMenu     = marketStore.showRoleMenu;
 const showNotifications = marketStore.showNotifications;
-const currentView = marketStore.currentView;
-const pageTitle = marketStore.pageTitle;
-const pageSubtitle = marketStore.pageSubtitle;
-const overdueCount = marketStore.overdueCount;
-const kpis = marketStore.kpis;
-const monthlyTrends = marketStore.monthlyTrends;
+const pageTitle        = marketStore.pageTitle;
+const pageSubtitle     = marketStore.pageSubtitle;
+const overdueCount     = marketStore.overdueCount;
 const overdueMerchants = marketStore.overdueMerchants;
-const roleAbbr = marketStore.roleAbbr;
-const activeTab = computed(() => state.activeTab);
+const roleAbbr         = marketStore.roleAbbr;
 
-watch(
-  activeTab,
-  async (tab) => {
-    const targetPath = getPathFromTab(tab);
-    if (targetPath && router.currentRoute.value.path !== targetPath) {
-      await router.replace(targetPath);
-    }
-  },
-  { immediate: true }
-);
+const activeTab = computed(() => state.activeTab);
 
 const iconForTab = (tab) => {
   if (tab.startsWith('dashboard')) {
     return tab === 'dashboard-accountant' ? DollarSign : tab === 'dashboard-occupancy' ? Grid : MapPin;
   }
-  if (tab.includes('blocks')) return Building2;
+  if (tab.includes('blocks') || tab.includes('rent-rates')) return Building2;
   if (tab.includes('places')) return MapPin;
   if (tab.includes('merchants')) return Users;
   if (tab.includes('finances')) return DollarSign;
@@ -292,13 +133,14 @@ const visibleRoutes = computed(() =>
   }))
 );
 
-const toggleSidebar = () => marketStore.toggleSidebar();
-const toggleRoleMenu = () => marketStore.toggleRoleMenu();
+const toggleSidebar     = () => marketStore.toggleSidebar();
+const toggleRoleMenu    = () => marketStore.toggleRoleMenu();
 const toggleNotifications = () => marketStore.toggleNotifications();
-const navigate = (path) => router.push(path);
+
 const logout = async () => {
   await marketStore.logout();
   await router.replace('/');
 };
+
 const money = (value) => formatCurrency(value, 'FBu');
 </script>

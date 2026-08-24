@@ -298,3 +298,21 @@ export function mapAuditLog(log) {
     bank: null,
   };
 }
+
+export function mapRentRate(rate) {
+  return {
+    id: rate.id,
+    blockId: rate.block_id || null,
+    blockCode: rate.block?.code || '',
+    blockName: rate.block?.name || '',
+    placeId: rate.place_id || null,
+    placeCode: rate.place?.code || '',
+    amount: ensureNumber(rate.amount),
+    effectiveFrom: toDateString(rate.effective_from),
+    effectiveTo: toDateString(rate.effective_to),
+    status: rate.status || 'ACTIVE',
+    createdAt: toDateTimeString(rate.created_at),
+    // Portée : 'block' si pas de place_id, 'place' sinon
+    scope: rate.place_id ? 'place' : 'block',
+  };
+}

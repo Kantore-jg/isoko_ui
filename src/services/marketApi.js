@@ -68,6 +68,22 @@ export function deleteBankApi(id) {
   return apiRequest(`/banks/${id}`, { method: 'DELETE' });
 }
 
+export function listRentRatesApi(params = {}) {
+  return listApi('rent-rates', params);
+}
+
+export function createRentRateApi(payload) {
+  return apiRequest('/rent-rates', { method: 'POST', body: payload });
+}
+
+export function updateRentRateApi(id, payload) {
+  return apiRequest(`/rent-rates/${id}`, { method: 'PUT', body: payload });
+}
+
+export function deleteRentRateApi(id) {
+  return apiRequest(`/rent-rates/${id}`, { method: 'DELETE' });
+}
+
 export function listBlocksApi(params = {}) {
   return listApi('blocks', params);
 }

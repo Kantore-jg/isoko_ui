@@ -21,6 +21,7 @@ export const ROUTES = [
   { path: '/dashboard/occupancy', tab: 'dashboard-occupancy', label: 'Plan 2D & Occupation', roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
   { path: '/structure/blocks', tab: 'structure-blocks', label: 'Blocs & Tarifs', roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
   { path: '/structure/places', tab: 'structure-places', label: 'Places du Marché', roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
+  { path: '/structure/rent-rates', tab: 'structure-rent-rates', label: 'Tarifs de Loyer', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { path: '/merchants', tab: 'merchants-list', label: 'Commerçants', roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
   { path: '/merchants/assignments', tab: 'merchants-assignments', label: 'Affectations Actives', roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
   { path: '/merchants/movements', tab: 'merchants-movements', label: 'Mouvements & Historique', roles: ['SUPER_ADMIN', 'ADMIN', 'ACCOUNTANT'] },
