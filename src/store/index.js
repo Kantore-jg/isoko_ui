@@ -106,8 +106,25 @@ const showRoleMenu = ref(false);
 const showNotifications = ref(false);
 let lastLoadedPath = '';
 const responseCache = Object.create(null);
+const resourcePermissionMap = {
+  dashboardSummary: ['dashboard.view', 'reports.view'],
+  movements: ['reports.view'],
+  auditLogs: ['reports.view'],
+  blocks: ['blocks.manage'],
+  places: ['places.manage'],
+  merchants: ['merchants.manage'],
+  assignments: ['assignments.manage'],
+  obligations: ['rents.manage'],
+  banks: ['banks.manage'],
+  payments: ['payments.manage'],
+  receipts: ['receipts.manage'],
+  users: ['users.manage'],
+  roles: ['roles.manage'],
+  permissions: ['permissions.manage'],
+  settings: ['settings.manage'],
+};
 
-const sharedResources = ['currentUser', 'market'];
+const sharedResources = ['market'];
 const pageResourceMap = {
   'dashboard-super': ['dashboardSummary', 'blocks', 'places', 'merchants', 'assignments', 'movements', 'obligations', 'banks', 'payments', 'receipts'],
   'dashboard-admin': ['dashboardSummary', 'blocks', 'places', 'merchants', 'assignments', 'movements'],
@@ -123,7 +140,7 @@ const pageResourceMap = {
   'finances-banks': ['banks', 'payments'],
   'tools-excel': ['blocks', 'places', 'merchants', 'assignments', 'payments', 'obligations', 'banks', 'receipts'],
   'tools-audit': ['auditLogs'],
-  'admin-users': ['users', 'roles', 'permissions'],
+  'admin-users': ['users'],
   'admin-settings': ['settings'],
 };
 
@@ -194,9 +211,17 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}`;
 }
 
-function getPageResources(tab) {
+function canLoadResource(resource, permissions) {
+  const requiredPermissions = resourcePermissionMap[resource];
+  if (!requiredPermissions || requiredPermissions.length === 0) {
+    return true;
+  }
+
+  return requiredPermissions.some((permission) => permissions.has(permission));
+}
+
+function getPageResources(tab, permissions = new Set()) {
   const resources = [...(pageResourceMap[tab] || [])];
-  const permissions = new Set(state.currentUser?.permissions || []);
 
   if (tab === 'admin-users') {
     if (permissions.has('roles.manage')) {
@@ -208,7 +233,7 @@ function getPageResources(tab) {
     }
   }
 
-  return [...new Set([...resources, ...sharedResources])];
+  return [...new Set([...resources, ...sharedResources])].filter((resource) => canLoadResource(resource, permissions));
 }
 
 function hasCachedResponse(resource) {
@@ -333,29 +358,45 @@ function applyApiState(payload) {
 async function loadBootstrapData(options = {}) {
   const force = options.force ?? false;
   const tab = options.tab || state.activeTab || getTabFromPath(window.location.pathname);
-  const resources = getPageResources(tab);
   const issues = [];
   const responses = {};
-  const resourcesToLoad = resources.filter((resource) => force || !hasCachedResponse(resource));
+  const safe = async (loader, fallback, label) => {
+    try {
+      const result = await loader();
+      return { ok: true, value: result };
+    } catch (error) {
+      issues.push({ label, message: error?.message || 'Erreur inconnue.' });
+      return { ok: false, value: fallback };
+    }
+  };
 
-  clearPageResources(resourcesToLoad.filter((resource) => resource !== 'currentUser' && resource !== 'market'));
+  const meResponse = options.currentUser
+    ? { user: options.currentUser }
+    : await safe(
+      () => resourceLoaders.currentUser(options),
+      resourceFallbacks.currentUser,
+      'currentUser'
+    );
 
-  for (const resource of resources) {
+  responses.currentUser = meResponse;
+
+  const resolvedCurrentUser = options.currentUser || mapCurrentUser(meResponse.user);
+  const permissionSet = new Set(resolvedCurrentUser?.permissions || []);
+  const resourcesToLoad = getPageResources(tab, permissionSet).filter((resource) => force || !hasCachedResponse(resource));
+
+  clearPageResources(resourcesToLoad.filter((resource) => resource !== 'market'));
+
+  for (const resource of getPageResources(tab, permissionSet)) {
+    if (resource === 'market' || resource === 'currentUser') {
+      continue;
+    }
+
     if (!resourcesToLoad.includes(resource)) {
       responses[resource] = responseCache[resource];
     }
   }
 
-  const safe = async (loader, fallback, label) => {
-    try {
-      const result = await loader();
-      responseCache[label] = result;
-      return result;
-    } catch (error) {
-      issues.push({ label, message: error?.message || 'Erreur inconnue.' });
-      return fallback;
-    }
-  };
+  responses.market = responseCache.market || null;
 
   await Promise.all(resourcesToLoad.map(async (resource) => {
     const loader = resourceLoaders[resource];
@@ -363,16 +404,21 @@ async function loadBootstrapData(options = {}) {
       return;
     }
 
-    responses[resource] = await safe(
-      resource === 'currentUser'
-        ? () => loader(options)
-        : loader,
+    const result = await safe(
+      loader,
       resourceFallbacks[resource],
       resource
     );
+    responses[resource] = result.value;
+
+    if (result.ok) {
+      responseCache[resource] = result.value;
+    } else {
+      delete responseCache[resource];
+    }
   }));
 
-  const meResponse = responses.currentUser || resourceFallbacks.currentUser;
+  const currentUserResponse = responses.currentUser || resourceFallbacks.currentUser;
   const settingsResponse = responses.market || resourceFallbacks.market;
   const summaryResponse = responses.dashboardSummary || resourceFallbacks.dashboardSummary;
   const blocksResponse = responses.blocks || resourceFallbacks.blocks;
@@ -399,7 +445,7 @@ async function loadBootstrapData(options = {}) {
   const movements = listData(movementsResponse).map(mapMovement);
   const users = listData(usersResponse).map(mapCurrentUser);
   const roles = listData(rolesResponse).map(mapRole);
-  const permissions = listData(permissionsResponse).map(mapPermission);
+  const permissionsList = listData(permissionsResponse).map(mapPermission);
   const auditLogs = listData(auditLogsResponse).map(mapAuditLog);
   const balanceDueByMerchant = obligations.reduce((accumulator, obligation) => {
     const key = String(obligation.merchantId || '');
@@ -465,13 +511,17 @@ async function loadBootstrapData(options = {}) {
   }));
 
   return {
-    currentUser: options.currentUser || mapCurrentUser(meResponse.user),
+    currentUser:
+      options.currentUser
+      || mapCurrentUser(currentUserResponse.user)
+      || state.currentUser
+      || null,
     market: mapMarket(settingsResponse.market, summaryResponse.summary, settingsResponse.settings || []),
     dashboardSummary: summaryResponse.summary || null,
     settings: settingsResponse.settings || [],
     users,
     roles,
-    permissions,
+    permissions: permissionsList,
     blocks: listData(blocksResponse).map(mapBlock),
     places: placesWithAssignments,
     merchants: merchantsWithTotals,
@@ -1010,7 +1060,8 @@ async function syncRoute(pathname) {
     return;
   }
 
-  void hydrateFromApi({ tab: nextTab, force: false }).catch(() => {});
+  const forceReload = nextTab === 'admin-users';
+  void hydrateFromApi({ tab: nextTab, force: forceReload }).catch(() => {});
 }
 
 function toggleSidebar() {
