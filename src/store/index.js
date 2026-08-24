@@ -105,6 +105,7 @@ const searchQuery = ref('');
 const showRoleMenu = ref(false);
 const showNotifications = ref(false);
 let lastLoadedPath = '';
+const responseCache = Object.create(null);
 
 const sharedResources = ['currentUser', 'market'];
 const pageResourceMap = {
@@ -194,7 +195,24 @@ function createId(prefix) {
 }
 
 function getPageResources(tab) {
-  return [...new Set([...(pageResourceMap[tab] || []), ...sharedResources])];
+  const resources = [...(pageResourceMap[tab] || [])];
+  const permissions = new Set(state.currentUser?.permissions || []);
+
+  if (tab === 'admin-users') {
+    if (permissions.has('roles.manage')) {
+      resources.push('roles');
+    }
+
+    if (permissions.has('permissions.manage')) {
+      resources.push('permissions');
+    }
+  }
+
+  return [...new Set([...resources, ...sharedResources])];
+}
+
+function hasCachedResponse(resource) {
+  return Object.prototype.hasOwnProperty.call(responseCache, resource);
 }
 
 function clearPageResources(resources) {
@@ -313,23 +331,33 @@ function applyApiState(payload) {
 }
 
 async function loadBootstrapData(options = {}) {
+  const force = options.force ?? false;
   const tab = options.tab || state.activeTab || getTabFromPath(window.location.pathname);
   const resources = getPageResources(tab);
   const issues = [];
   const responses = {};
+  const resourcesToLoad = resources.filter((resource) => force || !hasCachedResponse(resource));
 
-  clearPageResources(resources.filter((resource) => resource !== 'currentUser' && resource !== 'market'));
+  clearPageResources(resourcesToLoad.filter((resource) => resource !== 'currentUser' && resource !== 'market'));
+
+  for (const resource of resources) {
+    if (!resourcesToLoad.includes(resource)) {
+      responses[resource] = responseCache[resource];
+    }
+  }
 
   const safe = async (loader, fallback, label) => {
     try {
-      return await loader();
+      const result = await loader();
+      responseCache[label] = result;
+      return result;
     } catch (error) {
       issues.push({ label, message: error?.message || 'Erreur inconnue.' });
       return fallback;
     }
   };
 
-  await Promise.all(resources.map(async (resource) => {
+  await Promise.all(resourcesToLoad.map(async (resource) => {
     const loader = resourceLoaders[resource];
     if (!loader) {
       return;
@@ -458,9 +486,10 @@ async function loadBootstrapData(options = {}) {
   };
 }
 
-async function hydrateFromApi() {
+async function hydrateFromApi(options = {}) {
   const token = getStoredToken();
-  const tab = state.activeTab || getTabFromPath(window.location.pathname);
+  const tab = options.tab || state.activeTab || getTabFromPath(window.location.pathname);
+  const force = options.force ?? true;
 
   state.isLoadingData = true;
   state.dataError = '';
@@ -475,7 +504,7 @@ async function hydrateFromApi() {
 
   state.authToken = token;
   try {
-    const payload = await loadBootstrapData({ tab });
+    const payload = await loadBootstrapData({ tab, force, currentUser: options.currentUser });
     applyApiState(payload);
     const criticalIssues = (payload.bootstrapIssues || []).filter((issue) => issue.label);
     state.dataError = criticalIssues.length
@@ -496,7 +525,7 @@ async function hydrateFromApi() {
 async function init() {
   try {
     state.activeTab = getTabFromPath(window.location.pathname);
-    await hydrateFromApi();
+    await hydrateFromApi({ force: true });
   } catch (error) {
     state.authError = error?.message || 'Impossible de charger la session.';
     setStoredToken('');
@@ -518,6 +547,7 @@ async function login(credentials) {
     state.activeTab = getTabFromPath(window.location.pathname);
     const payload = await loadBootstrapData({
       tab: state.activeTab,
+      force: true,
       currentUser: mapCurrentUser(response.user),
     });
     applyApiState(payload);
@@ -568,6 +598,9 @@ async function logout() {
   state.isNewPaymentModalOpen = false;
   state.isLoadingData = false;
   state.dataError = '';
+  Object.keys(responseCache).forEach((resource) => {
+    delete responseCache[resource];
+  });
   ready.value = true;
 }
 
@@ -977,7 +1010,7 @@ async function syncRoute(pathname) {
     return;
   }
 
-  void hydrateFromApi().catch(() => {});
+  void hydrateFromApi({ tab: nextTab, force: false }).catch(() => {});
 }
 
 function toggleSidebar() {

@@ -18,6 +18,7 @@
             Utilisateurs
           </button>
           <button
+            v-if="canManageRoles"
             class="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
             :class="activeScreen === 'roles' ? 'bg-[#1B2CC1] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
             @click="activeScreen = 'roles'"
@@ -25,6 +26,7 @@
             Rôles
           </button>
           <button
+            v-if="canManagePermissions"
             class="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
             :class="activeScreen === 'permissions' ? 'bg-[#1B2CC1] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
             @click="activeScreen = 'permissions'"
@@ -154,9 +156,13 @@
       </div>
     </template>
 
-    <template v-else>
+    <template v-else-if="canManageRoles || canManagePermissions">
       <RolesPermissionsManager :initial-tab="activeScreen === 'permissions' ? 'PERMISSIONS' : 'ROLES'" />
     </template>
+
+    <div v-else class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+      Votre compte peut gérer les utilisateurs, mais pas les rôles ni les permissions.
+    </div>
 
     <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -276,6 +282,7 @@ import { marketStore } from '../../store/index.js';
 
 const users = computed(() => marketStore.state.users || []);
 const currentUser = computed(() => marketStore.state.currentUser || null);
+const userPermissions = computed(() => currentUser.value?.permissions || []);
 const userRoles = computed(() => marketStore.state.roles || []);
 const isLoading = computed(() => marketStore.state.isLoadingData);
 const dataError = computed(() => marketStore.state.dataError || '');
@@ -295,6 +302,8 @@ const form = reactive({
 });
 
 const adminCount = computed(() => users.value.filter((user) => user.role === 'ADMIN').length);
+const canManageRoles = computed(() => currentUser.value?.role === 'SUPER_ADMIN' || userPermissions.value.includes('roles.manage'));
+const canManagePermissions = computed(() => currentUser.value?.role === 'SUPER_ADMIN' || userPermissions.value.includes('permissions.manage'));
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
   if (!query) return users.value;
