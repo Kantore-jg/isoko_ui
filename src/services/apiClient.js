@@ -28,6 +28,63 @@ export function setStoredToken(token) {
   }
 }
 
+function extractFirstJsonFragment(raw) {
+  const startIndex = raw.search(/[\[{]/);
+  if (startIndex < 0) {
+    return null;
+  }
+
+  const stack = [];
+  let inString = false;
+  let escaped = false;
+  let started = false;
+
+  for (let index = startIndex; index < raw.length; index += 1) {
+    const char = raw[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{' || char === '[') {
+      stack.push(char);
+      started = true;
+      continue;
+    }
+
+    if (!started) {
+      continue;
+    }
+
+    if (char === '}' || char === ']') {
+      const last = stack[stack.length - 1];
+      if ((char === '}' && last !== '{') || (char === ']' && last !== '[')) {
+        return null;
+      }
+
+      stack.pop();
+
+      if (stack.length === 0) {
+        return raw.slice(startIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function apiRequest(path, options = {}) {
   const url = `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
   const headers = new Headers(options.headers || {});
@@ -61,25 +118,14 @@ export async function apiRequest(path, options = {}) {
       return null;
     }
 
-    const looksLikeJson = raw.trim().startsWith('{') || raw.trim().startsWith('[');
+    const fragment = extractFirstJsonFragment(raw);
 
-    if (contentType.includes('application/json') || looksLikeJson) {
-      const trimmed = raw.trim();
-      const attempts = [trimmed, raw];
-      const openingIndex = raw.search(/[\[{]/);
-      const closingObjectIndex = raw.lastIndexOf('}');
-      const closingArrayIndex = raw.lastIndexOf(']');
-
-      if (openingIndex >= 0) {
-        attempts.push(raw.slice(openingIndex).trim());
-
-        const closingIndex = Math.max(closingObjectIndex, closingArrayIndex);
-        if (closingIndex > openingIndex) {
-          attempts.push(raw.slice(openingIndex, closingIndex + 1).trim());
-        }
-      }
+    if (contentType.includes('application/json') || fragment) {
+      const attempts = [fragment, raw.trim(), raw];
 
       for (const candidate of attempts) {
+        if (!candidate) continue;
+
         try {
           return JSON.parse(candidate);
         } catch {
