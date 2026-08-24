@@ -168,10 +168,12 @@ function applyApiState(payload) {
 }
 
 async function loadBootstrapData(options = {}) {
-  const safe = async (loader, fallback) => {
+  const issues = [];
+  const safe = async (loader, fallback, label) => {
     try {
       return await loader();
-    } catch {
+    } catch (error) {
+      issues.push({ label, message: error?.message || 'Erreur inconnue.' });
       return fallback;
     }
   };
@@ -195,21 +197,21 @@ async function loadBootstrapData(options = {}) {
     auditLogsResponse,
   ] = await Promise.all([
     options.currentUser ? Promise.resolve({ user: options.currentUser }) : meApi(),
-    safe(settingsApi, { market: null, settings: [] }),
-    safe(dashboardSummaryApi, { summary: {} }),
-    safe(() => listApi('blocks', { per_page: 1000 }), { data: [] }),
-    safe(() => listApi('places', { per_page: 1000 }), { data: [] }),
-    safe(() => listMerchantsApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listApi('assignments', { per_page: 1000 }), { data: [] }),
-    safe(() => listApi('movements', { per_page: 1000 }), { data: [] }),
-    safe(() => listApi('rent-obligations', { per_page: 1000 }), { data: [] }),
-    safe(() => listBanksApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listPaymentsApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listReceiptsApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listUsersApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listRolesApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listPermissionsApi({ per_page: 1000 }), { data: [] }),
-    safe(() => listApi('audit-logs', { per_page: 1000 }), { data: [] }),
+    safe(settingsApi, { market: null, settings: [] }, 'settings'),
+    safe(dashboardSummaryApi, { summary: {} }, 'dashboard'),
+    safe(() => listApi('blocks', { per_page: 1000 }), { data: [] }, 'blocks'),
+    safe(() => listApi('places', { per_page: 1000 }), { data: [] }, 'places'),
+    safe(() => listMerchantsApi({ per_page: 1000 }), { data: [] }, 'merchants'),
+    safe(() => listApi('assignments', { per_page: 1000 }), { data: [] }, 'assignments'),
+    safe(() => listApi('movements', { per_page: 1000 }), { data: [] }, 'movements'),
+    safe(() => listApi('rent-obligations', { per_page: 1000 }), { data: [] }, 'obligations'),
+    safe(() => listBanksApi({ per_page: 1000 }), { data: [] }, 'banks'),
+    safe(() => listPaymentsApi({ per_page: 1000 }), { data: [] }, 'payments'),
+    safe(() => listReceiptsApi({ per_page: 1000 }), { data: [] }, 'receipts'),
+    safe(() => listUsersApi({ per_page: 1000 }), { data: [] }, 'users'),
+    safe(() => listRolesApi({ per_page: 1000 }), { data: [] }, 'roles'),
+    safe(() => listPermissionsApi({ per_page: 1000 }), { data: [] }, 'permissions'),
+    safe(() => listApi('audit-logs', { per_page: 1000 }), { data: [] }, 'audit-logs'),
   ]);
 
   const assignments = (assignmentsResponse.data || []).map(mapAssignment);
@@ -305,6 +307,7 @@ async function loadBootstrapData(options = {}) {
     payments,
     receipts,
     auditLogs,
+    bootstrapIssues: issues,
   };
 }
 
@@ -326,6 +329,12 @@ async function hydrateFromApi() {
   try {
     const payload = await loadBootstrapData();
     applyApiState(payload);
+    const criticalIssues = (payload.bootstrapIssues || []).filter((issue) =>
+      ['users', 'roles', 'permissions'].includes(issue.label)
+    );
+    state.dataError = criticalIssues.length
+      ? `Certaines données administratives n'ont pas pu être chargées: ${criticalIssues.map((issue) => issue.label).join(', ')}.`
+      : '';
     ready.value = true;
     persist();
     return payload;
@@ -362,6 +371,12 @@ async function login(credentials) {
       currentUser: mapCurrentUser(response.user),
     });
     applyApiState(payload);
+    const criticalIssues = (payload.bootstrapIssues || []).filter((issue) =>
+      ['users', 'roles', 'permissions'].includes(issue.label)
+    );
+    state.dataError = criticalIssues.length
+      ? `Certaines données administratives n'ont pas pu être chargées: ${criticalIssues.map((issue) => issue.label).join(', ')}.`
+      : '';
     state.currentUser = payload.currentUser;
     ready.value = true;
     persist();
