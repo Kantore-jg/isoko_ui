@@ -1,5 +1,15 @@
 <template>
   <section class="space-y-6">
+    <DataStatePanel
+      :loading="isLoading"
+      :error="dataError"
+      :empty="!isLoading && !dataError && !roles.length && !permissions.length"
+      title="Accès"
+      loading-message="Chargement des rôles et permissions..."
+      error-message="Impossible de charger les rôles et permissions."
+      empty-message="Aucun rôle ou permission n’est encore disponible."
+    />
+
     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
@@ -157,10 +167,18 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
+import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
-const activeTab = ref('ROLES');
+const props = defineProps({
+  initialTab: {
+    type: String,
+    default: 'ROLES',
+  },
+});
+
+const activeTab = ref(props.initialTab === 'PERMISSIONS' ? 'PERMISSIONS' : 'ROLES');
 const modalOpen = ref(false);
 const modalType = ref('ROLE');
 const editingId = ref(null);
@@ -168,6 +186,8 @@ const errorMessage = ref('');
 
 const roles = computed(() => marketStore.state.roles || []);
 const permissions = computed(() => marketStore.state.permissions || []);
+const isLoading = computed(() => marketStore.state.isLoadingData);
+const dataError = computed(() => marketStore.state.dataError || '');
 const canSubmit = computed(() => {
   const hasBaseFields = Boolean(form.code.trim() && form.name.trim());
   if (modalType.value === 'ROLE') {
@@ -183,6 +203,13 @@ const form = reactive({
   module: '',
   permissionIds: [],
 });
+
+watch(
+  () => props.initialTab,
+  (value) => {
+    activeTab.value = value === 'PERMISSIONS' ? 'PERMISSIONS' : 'ROLES';
+  }
+);
 
 function resetForm() {
   form.code = '';

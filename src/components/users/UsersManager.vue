@@ -1,6 +1,6 @@
 <template>
   <section class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <h2 class="text-lg font-bold text-slate-900">Utilisateurs & rôles</h2>
         <p class="mt-0.5 text-xs text-slate-500">
@@ -8,124 +8,155 @@
         </p>
       </div>
 
-      <div class="flex flex-col gap-2 sm:min-w-80 sm:items-end">
-        <label class="w-full">
-          <span class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Rechercher</span>
-          <input
-            v-model="searchQuery"
-            type="search"
-            placeholder="Nom, email, téléphone, rôle..."
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B2CC1]/20"
+      <div class="flex flex-col gap-2 lg:min-w-[42rem] lg:items-end">
+        <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+          <button
+            class="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+            :class="activeScreen === 'users' ? 'bg-[#1B2CC1] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+            @click="activeScreen = 'users'"
           >
-        </label>
+            Utilisateurs
+          </button>
+          <button
+            class="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+            :class="activeScreen === 'roles' ? 'bg-[#1B2CC1] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+            @click="activeScreen = 'roles'"
+          >
+            Rôles
+          </button>
+          <button
+            class="rounded-lg px-3 py-2 text-xs font-bold transition-colors"
+            :class="activeScreen === 'permissions' ? 'bg-[#1B2CC1] text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+            @click="activeScreen = 'permissions'"
+          >
+            Permissions
+          </button>
+        </div>
 
-        <button
-          class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
-          @click="openCreate"
-        >
-          Ajouter un utilisateur
-        </button>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-3 gap-3 text-center text-xs">
-      <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2">
-        <p class="text-[10px] font-semibold uppercase text-slate-400">Total</p>
-        <p class="mt-1 text-sm font-bold text-slate-900">{{ users.length }}</p>
-      </div>
-      <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-3 py-2">
-        <p class="text-[10px] font-semibold uppercase text-emerald-600">Admins Marché</p>
-        <p class="mt-1 text-sm font-bold text-emerald-700">{{ adminCount }}</p>
-      </div>
-      <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-        <p class="text-[10px] font-semibold uppercase text-slate-500">Actif</p>
-        <p class="mt-1 text-sm font-bold text-slate-900">{{ currentUser?.name }}</p>
-      </div>
-    </div>
-
-    <DataStatePanel
-      :loading="isLoading"
-      :error="dataError"
-      :empty="filteredUsers.length === 0 && !isLoading && !dataError"
-      title="Utilisateurs"
-      loading-message="Chargement des utilisateurs..."
-      error-message="Impossible de charger les utilisateurs."
-      empty-message="Aucun utilisateur ne correspond à la recherche."
-    />
-
-    <div v-if="!isLoading && !dataError && filteredUsers.length > 0" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div class="border-b border-slate-100 px-5 py-4">
-        <h3 class="text-sm font-bold text-slate-900">Comptes existants</h3>
-        <p class="mt-0.5 text-xs text-slate-500">Modifiez ou supprimez les comptes, ou activez celui que vous voulez utiliser.</p>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs">
-          <thead class="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-            <tr>
-              <th class="px-4 py-3">Nom</th>
-              <th class="px-4 py-3">Email</th>
-              <th class="px-4 py-3">Téléphone</th>
-              <th class="px-4 py-3">Profil</th>
-              <th class="px-4 py-3">Titre</th>
-              <th class="px-4 py-3">Statut</th>
-              <th class="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr
-              v-for="user in filteredUsers"
-              :key="user.id"
-              class="transition-colors hover:bg-slate-50/70"
-              :class="user.id === currentUser?.id ? 'bg-emerald-50/40' : ''"
+        <div v-if="activeScreen === 'users'" class="flex flex-col gap-2 sm:min-w-80 sm:items-end">
+          <label class="w-full">
+            <span class="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Rechercher</span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              placeholder="Nom, email, téléphone, rôle..."
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#1B2CC1]/20"
             >
-              <td class="px-4 py-3">
-                <p class="font-bold text-slate-900">{{ user.name }}</p>
-                <p class="text-[11px] text-slate-400">{{ user.id }}</p>
-              </td>
-              <td class="px-4 py-3 text-slate-600">{{ user.email }}</td>
-              <td class="px-4 py-3 font-mono text-slate-700">{{ user.phone || '—' }}</td>
-              <td class="px-4 py-3">
-                <span
-                  class="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                  :class="user.role === 'ADMIN' ? 'bg-blue-100 text-blue-700' : user.role === 'SUPER_ADMIN' ? 'bg-slate-100 text-slate-700' : 'bg-amber-100 text-amber-700'"
-                >
-                  {{ roleLabel(user.role) }}
-                </span>
-              </td>
-              <td class="px-4 py-3 font-semibold text-emerald-700">{{ user.title }}</td>
-              <td class="px-4 py-3">
-                <span class="text-[11px] font-semibold" :class="user.id === currentUser?.id ? 'text-emerald-700' : 'text-slate-500'">
-                  {{ user.id === currentUser?.id ? 'Compte actif' : 'Disponible' }}
-                </span>
-              </td>
-              <td class="px-4 py-3">
-                <div class="flex justify-end gap-2">
-                  <button class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50" @click="activate(user.id)">
-                    Activer
-                  </button>
-                  <button
-                    class="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    :disabled="user.role === 'SUPER_ADMIN'"
-                    @click="openEdit(user)"
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    class="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                    :disabled="user.id === currentUser?.id || user.role === 'SUPER_ADMIN'"
-                    @click="removeUser(user)"
-                  >
-                    Supprimer
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          </label>
+
+          <button
+            class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+            @click="openCreate"
+          >
+            Ajouter un utilisateur
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <template v-if="activeScreen === 'users'">
+      <div class="grid grid-cols-3 gap-3 text-center text-xs">
+        <div class="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Total</p>
+          <p class="mt-1 text-sm font-bold text-slate-900">{{ users.length }}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-3 py-2">
+          <p class="text-[10px] font-semibold uppercase text-emerald-600">Admins Marché</p>
+          <p class="mt-1 text-sm font-bold text-emerald-700">{{ adminCount }}</p>
+        </div>
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <p class="text-[10px] font-semibold uppercase text-slate-500">Actif</p>
+          <p class="mt-1 text-sm font-bold text-slate-900">{{ currentUser?.name }}</p>
+        </div>
       </div>
 
-    </div>
+      <DataStatePanel
+        :loading="isLoading"
+        :error="dataError"
+        :empty="filteredUsers.length === 0 && !isLoading && !dataError"
+        title="Utilisateurs"
+        loading-message="Chargement des utilisateurs..."
+        error-message="Impossible de charger les utilisateurs."
+        empty-message="Aucun utilisateur ne correspond à la recherche."
+      />
+
+      <div v-if="!isLoading && !dataError && filteredUsers.length > 0" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-100 px-5 py-4">
+          <h3 class="text-sm font-bold text-slate-900">Comptes existants</h3>
+          <p class="mt-0.5 text-xs text-slate-500">Modifiez ou supprimez les comptes, ou activez celui que vous voulez utiliser.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th class="px-4 py-3">Nom</th>
+                <th class="px-4 py-3">Email</th>
+                <th class="px-4 py-3">Téléphone</th>
+                <th class="px-4 py-3">Profil</th>
+                <th class="px-4 py-3">Titre</th>
+                <th class="px-4 py-3">Statut</th>
+                <th class="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr
+                v-for="user in filteredUsers"
+                :key="user.id"
+                class="transition-colors hover:bg-slate-50/70"
+                :class="user.id === currentUser?.id ? 'bg-emerald-50/40' : ''"
+              >
+                <td class="px-4 py-3">
+                  <p class="font-bold text-slate-900">{{ user.name }}</p>
+                  <p class="text-[11px] text-slate-400">{{ user.id }}</p>
+                </td>
+                <td class="px-4 py-3 text-slate-600">{{ user.email }}</td>
+                <td class="px-4 py-3 font-mono text-slate-700">{{ user.phone || '—' }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    class="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    :class="user.role === 'ADMIN' ? 'bg-blue-100 text-blue-700' : user.role === 'SUPER_ADMIN' ? 'bg-slate-100 text-slate-700' : 'bg-amber-100 text-amber-700'"
+                  >
+                    {{ roleLabel(user.role) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 font-semibold text-emerald-700">{{ user.title }}</td>
+                <td class="px-4 py-3">
+                  <span class="text-[11px] font-semibold" :class="user.id === currentUser?.id ? 'text-emerald-700' : 'text-slate-500'">
+                    {{ user.id === currentUser?.id ? 'Compte actif' : 'Disponible' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex justify-end gap-2">
+                    <button class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50" @click="activate(user.id)">
+                      Activer
+                    </button>
+                    <button
+                      class="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      :disabled="user.role === 'SUPER_ADMIN'"
+                      @click="openEdit(user)"
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      class="rounded-lg border border-rose-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      :disabled="user.id === currentUser?.id || user.role === 'SUPER_ADMIN'"
+                      @click="removeUser(user)"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+    <template v-else>
+      <RolesPermissionsManager :initial-tab="activeScreen === 'permissions' ? 'PERMISSIONS' : 'ROLES'" />
+    </template>
 
     <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
       <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
@@ -238,8 +269,9 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import DataStatePanel from '../common/DataStatePanel.vue';
+import RolesPermissionsManager from '../admin/RolesPermissionsManager.vue';
 import { marketStore } from '../../store/index.js';
 
 const users = computed(() => marketStore.state.users || []);
@@ -247,6 +279,7 @@ const currentUser = computed(() => marketStore.state.currentUser || null);
 const userRoles = computed(() => marketStore.state.roles || []);
 const isLoading = computed(() => marketStore.state.isLoadingData);
 const dataError = computed(() => marketStore.state.dataError || '');
+const activeScreen = ref('users');
 const searchQuery = ref('');
 const isModalOpen = ref(false);
 const editingUser = ref(null);
@@ -296,6 +329,14 @@ function roleLabel(role) {
   if (role === 'ACCOUNTANT') return 'Comptable';
   return role;
 }
+
+onMounted(async () => {
+  try {
+    await marketStore.refreshFromBackend();
+  } catch {
+    //
+  }
+});
 
 function resetForm() {
   form.name = '';

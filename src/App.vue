@@ -177,7 +177,6 @@
 
           <section v-else-if="currentView === 'admin-users'" class="space-y-6">
             <UsersManager />
-            <RolesPermissionsManager />
           </section>
 
           <MarketSettings v-else-if="currentView === 'admin-settings'" />
@@ -231,7 +230,6 @@ import ReceiptsList from './components/finances/ReceiptsList.vue';
 import RentObligationsList from './components/finances/RentObligationsList.vue';
 import MarketSettings from './components/settings/MarketSettings.vue';
 import UsersManager from './components/users/UsersManager.vue';
-import RolesPermissionsManager from './components/admin/RolesPermissionsManager.vue';
 import Login from './components/auth/Login.vue';
 import DataStatePanel from './components/common/DataStatePanel.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
