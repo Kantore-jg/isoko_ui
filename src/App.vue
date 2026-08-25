@@ -80,7 +80,8 @@
 </template>
 
 <script setup>
-import { ref,computed, Teleport,onMounted, onUnmounted } from 'vue';
+import { ref, computed, Teleport, onMounted, onUnmounted } from 'vue';
+import { storeToRefs } from 'pinia';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   Building2,
@@ -103,14 +104,17 @@ const router = useRouter();
 const route = useRoute();
 
 const state            = marketStore.state;
-const ready            = marketStore.ready;
-const showRoleMenu     = marketStore.showRoleMenu;
-const showNotifications = marketStore.showNotifications;
+const {
+  ready,
+  showRoleMenu,
+  showNotifications,
+  overdueCount,
+  overdueMerchants,
+  roleAbbr,
+} = storeToRefs(marketStore);
+
 const pageTitle = computed(() => getRouteLabel(activeTab.value));
 // const pageSubtitle = computed(() => `${state.market?.name || ''} • Dimanche 23 Août 2026`);
-const overdueCount     = marketStore.overdueCount;
-const overdueMerchants = marketStore.overdueMerchants;
-const roleAbbr         = marketStore.roleAbbr;
 
 const activeTab = computed(() => route.meta?.tab || route.name || getTabFromPath(route.path));
 

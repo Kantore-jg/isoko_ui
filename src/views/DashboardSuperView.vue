@@ -32,7 +32,6 @@
             <h2 class="text-sm font-bold text-slate-900">Évolution Financière Mensuelle</h2>
             <p class="text-xs text-slate-500">Vue consolidée {{ currentYear }}</p>
           </div>
-          <span class="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-700">Dashboard</span>
         </div>
         <div class="space-y-3">
           <div v-for="trend in monthlyTrends" :key="trend.month" class="grid grid-cols-[70px_1fr_70px] items-center gap-3">

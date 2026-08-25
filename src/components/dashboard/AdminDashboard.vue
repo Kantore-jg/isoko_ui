@@ -10,20 +10,6 @@
       empty-message="Les blocs et places ne sont pas encore disponibles."
     />
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div class="mb-2 flex flex-wrap items-center gap-2">
-            <span class="rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-              Commissaire du Marché • Gestion Opérationnelle
-            </span>
-            <span class="text-xs text-slate-500">{{ market.name }}</span>
-          </div>
-          <h2 class="text-xl font-bold tracking-tight text-slate-900">Supervision & Gestion des Emplacements</h2>
-          <p class="mt-1 max-w-2xl text-xs text-slate-500">
-            Gérez les affectations de places, les commerçants, les transferts d'activité et la maintenance des blocs.
-          </p>
-        </div>
 
         <div class="flex flex-wrap items-center gap-2">
           <button
@@ -41,8 +27,7 @@
             <span>Commerçants</span>
           </button>
         </div>
-      </div>
-    </div>
+
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
