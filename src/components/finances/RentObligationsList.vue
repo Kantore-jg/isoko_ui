@@ -35,8 +35,8 @@
           <option value="PARTIAL">Partiel</option>
         </select>
         <select v-model="monthFilter" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-          <option value="ALL">Toute l'année 2026</option>
-          <option v-for="month in months" :key="month.num" :value="month.num">{{ month.name }} 2026</option>
+          <option value="ALL">Toute l'année {{ currentYear }}</option>
+          <option v-for="month in months" :key="month.num" :value="month.num">{{ month.name }} {{ currentYear }}</option>
         </select>
       </div>
       <input v-model="searchQuery" type="text" placeholder="Rechercher commerçant, place..." class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 md:w-80">

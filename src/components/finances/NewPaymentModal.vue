@@ -110,6 +110,18 @@ import { computed, reactive, ref, watch } from 'vue';
 import DataStatePanel from '../common/DataStatePanel.vue';
 import { marketStore } from '../../store/index.js';
 
+function formatLocalDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+const today = new Date();
+const currentYear = today.getFullYear();
+const currentMonth = today.getMonth() + 1;
+const currentDate = formatLocalDate(today);
+
 const isOpen = computed(() => marketStore.state.isNewPaymentModalOpen);
 const isLoadingData = computed(() => marketStore.state.isLoadingData);
 const activeMerchants = computed(() => marketStore.state.merchants.filter((merchant) => merchant.status === 'ACTIVE' && merchant.currentPlaceId));
@@ -137,12 +149,12 @@ const months = [
 const form = reactive({
   merchantId: '',
   placeId: '',
-  periodYear: 2026,
-  periodMonth: 8,
+  periodYear: currentYear,
+  periodMonth: currentMonth,
   amount: 50000,
   bankId: '',
   referenceNumber: '',
-  paymentDate: '2026-08-23',
+  paymentDate: currentDate,
   notes: '',
 });
 
@@ -155,7 +167,10 @@ function seedForm() {
   form.placeId = place?.id || '';
   form.amount = place?.rentPrice || 50000;
   form.bankId = bank?.id || '';
-  form.referenceNumber = `${prefix}-2026-${String(marketStore.state.payments.length + 146).padStart(6, '0')}`;
+  form.periodYear = currentYear;
+  form.periodMonth = currentMonth;
+  form.paymentDate = currentDate;
+  form.referenceNumber = `${prefix}-${currentYear}-${String(marketStore.state.payments.length + 146).padStart(6, '0')}`;
   formError.value = '';
 }
 

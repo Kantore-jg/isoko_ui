@@ -236,8 +236,7 @@ function money(value) {
 }
 
 function moneyMillions(value) {
-  const amount = Number(value || 0);
-  return `${(amount / 1000000).toFixed(1)}M FBu`;
+  return formatCurrency(Number(value || 0), 'FBu');
 }
 
 function navigate(path) {

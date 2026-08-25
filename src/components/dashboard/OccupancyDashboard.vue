@@ -10,16 +10,10 @@
       empty-message="Aucune place n’est encore disponible pour l’affichage."
     />
 
-    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <!-- <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"> -->
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <div class="flex items-center gap-2">
-            <Grid class="h-5 w-5 text-emerald-600" />
-            <h2 class="text-base font-bold text-slate-900">Plan 2D & Visualisation d'Occupation</h2>
-          </div>
-          <p class="mt-1 max-w-2xl text-xs text-slate-500">
-            Représentation visuelle des emplacements par bloc. Cliquez sur une place pour inspecter son occupant et son historique.
-          </p>
+
         </div>
 
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -53,7 +47,7 @@
           </div>
         </div>
       </div>
-    </div>
+    <!-- </div> -->
 
     <div class="flex flex-wrap items-center gap-4 px-1 text-xs text-slate-600">
       <div class="flex items-center gap-1.5">

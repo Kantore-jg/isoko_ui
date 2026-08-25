@@ -110,6 +110,9 @@ const searchQuery = ref('');
 const showRoleMenu = ref(false);
 const showNotifications = ref(false);
 let lastLoadedPath = '';
+const currentDate = new Date();
+const currentYear = currentDate.getFullYear();
+const currentMonth = currentDate.getMonth() + 1;
 const responseCache = Object.create(null);
 const resourcePermissionMap = {
   dashboardSummary: ['dashboard.view', 'reports.view'],
@@ -1107,14 +1110,23 @@ const roleAbbr = computed(() =>
       : 'CP'
 );
 const pageTitle = computed(() => getRouteLabel(state.activeTab));
-const pageSubtitle = computed(() => `${state.market?.name || ''} • Dimanche 23 Août 2026`);
+const pageSubtitle = computed(() => {
+  const formattedDate = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(currentDate);
+
+  return `${state.market?.name || ''} • ${formattedDate}`;
+});
 const overdueCount = computed(() => state.obligations.filter((obligation) => obligation.status === 'OVERDUE').length);
 
 const kpis = computed(() => {
   const occupiedPlaces = state.places.filter((place) => place.status === 'OCCUPIED');
   const expectedMonthly = occupiedPlaces.reduce((sum, place) => sum + place.rentPrice, 0);
   const obtainedMonthly = state.payments
-    .filter((payment) => payment.periodYear === 2026 && payment.periodMonth === 8)
+    .filter((payment) => payment.periodYear === currentYear && payment.periodMonth === currentMonth)
     .reduce((sum, payment) => sum + payment.amount, 0);
   const unpaidMonthly = Math.max(0, expectedMonthly - obtainedMonthly);
   const recoveryRateMonthly = expectedMonthly > 0 ? (obtainedMonthly / expectedMonthly) * 100 : 0;
@@ -1132,7 +1144,7 @@ const kpis = computed(() => {
     recoveryRateMonthly,
     expectedAnnual: expectedMonthly * 12,
     obtainedAnnual: state.payments
-      .filter((payment) => payment.periodYear === 2026)
+      .filter((payment) => payment.periodYear === currentYear)
       .reduce((sum, payment) => sum + payment.amount, 0),
     totalPlaces,
     occupiedPlaces: occupiedPlaces.length,
@@ -1146,13 +1158,13 @@ const kpis = computed(() => {
 });
 
 const monthlyTrends = computed(() =>
-  monthNames.slice(0, 8).map((month, index) => {
+  monthNames.slice(0, currentMonth).map((month, index) => {
     const monthNumber = index + 1;
     const expected = state.obligations
-      .filter((obligation) => obligation.periodYear === 2026 && obligation.periodMonth === monthNumber)
+      .filter((obligation) => obligation.periodYear === currentYear && obligation.periodMonth === monthNumber)
       .reduce((sum, obligation) => sum + obligation.amountExpected, 0);
     const obtained = state.payments
-      .filter((payment) => payment.periodYear === 2026 && payment.periodMonth === monthNumber)
+      .filter((payment) => payment.periodYear === currentYear && payment.periodMonth === monthNumber)
       .reduce((sum, payment) => sum + payment.amount, 0);
 
     return {
@@ -1172,7 +1184,7 @@ const blockStats = computed(() =>
       .filter((place) => place.status === 'OCCUPIED')
       .reduce((sum, place) => sum + place.rentPrice, 0);
     const obtainedRevenue = state.payments
-      .filter((payment) => payment.blockCode === block.code && payment.periodYear === 2026 && payment.periodMonth === 8)
+      .filter((payment) => payment.blockCode === block.code && payment.periodYear === currentYear && payment.periodMonth === currentMonth)
       .reduce((sum, payment) => sum + payment.amount, 0);
 
       return {
