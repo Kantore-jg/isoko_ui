@@ -12,7 +12,7 @@
         </div>
         <div v-if="!collapsed" class="min-w-0 truncate">
           <span class="block truncate text-base font-bold leading-tight text-white">MarketManager</span>
-          <span class="block truncate text-[10px] font-medium text-white/80">Bujumbura Market OS</span>
+          <!-- <span class="block truncate text-[10px] font-medium text-white/80">Bujumbura Market OS</span> -->
         </div>
       </div>
 

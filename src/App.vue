@@ -23,37 +23,43 @@
         @toggle-notifications="toggleNotifications"
       />
 
-      <!-- Panneau Notifications -->
-      <div v-if="showNotifications" class="absolute right-6 top-20 z-40 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-          <h3 class="text-xs font-semibold text-slate-800">Alertes Loyers</h3>
-          <span class="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">{{ overdueCount }} impayés</span>
+      <Teleport to="body">
+        <!-- Panneau Notifications -->
+        <div v-if="showNotifications" class="fixed inset-0 z-50" @click="toggleNotifications">
+          <div class="absolute right-6 top-20 w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl" @click.stop>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 class="text-xs font-semibold text-slate-800">Alertes Loyers</h3>
+              <span class="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">{{ overdueCount }} impayés</span>
+            </div>
+            <div class="mt-3 max-h-60 space-y-2 overflow-y-auto">
+              <article v-for="item in overdueMerchants.slice(0, 5)" :key="item.merchant.id" class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <p class="text-xs font-semibold text-slate-800">{{ item.merchant.name }}</p>
+                <p class="text-[11px] text-slate-500">{{ item.placeCode }} • {{ item.blockCode }}</p>
+                <p class="mt-1 text-[11px] font-semibold text-amber-700">{{ money(item.totalOverdue) }} dû</p>
+              </article>
+              <p v-if="!overdueMerchants.length" class="text-xs text-slate-500">Aucune alerte active.</p>
+            </div>
+            <button type="button" class="mt-3 w-full text-center text-xs font-semibold text-emerald-600 hover:underline" @click="router.push('/finances/rents')">
+              Voir tous les loyers
+            </button>
+          </div>
         </div>
-        <div class="mt-3 max-h-60 space-y-2 overflow-y-auto">
-          <article v-for="item in overdueMerchants.slice(0, 5)" :key="item.merchant.id" class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-            <p class="text-xs font-semibold text-slate-800">{{ item.merchant.name }}</p>
-            <p class="text-[11px] text-slate-500">{{ item.placeCode }} • {{ item.blockCode }}</p>
-            <p class="mt-1 text-[11px] font-semibold text-amber-700">{{ money(item.totalOverdue) }} dû</p>
-          </article>
-          <p v-if="!overdueMerchants.length" class="text-xs text-slate-500">Aucune alerte active.</p>
-        </div>
-        <button class="mt-3 w-full text-center text-xs font-semibold text-emerald-600 hover:underline" @click="router.push('/finances/rents')">
-          Voir tous les loyers
-        </button>
-      </div>
 
-      <!-- Panneau Rôle / Session -->
-      <div v-if="showRoleMenu" class="absolute right-6 top-20 z-40 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-        <p class="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Session</p>
-        <div class="rounded-xl bg-slate-50 px-3 py-3">
-          <p class="text-xs font-semibold text-slate-800">{{ state.currentUser.name }}</p>
-          <p class="text-[11px] text-slate-500">{{ state.currentUser.title }}</p>
-          <p class="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">{{ state.currentUser.role }}</p>
+        <!-- Panneau Rôle / Session -->
+        <div v-if="showRoleMenu" class="fixed inset-0 z-[60]" @click="toggleRoleMenu">
+          <div class="absolute right-6 top-20 w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl" @click.stop>
+            <p class="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Session</p>
+            <div class="rounded-xl bg-slate-50 px-3 py-3">
+              <p class="text-xs font-semibold text-slate-800">{{ state.currentUser.name }}</p>
+              <p class="text-[11px] text-slate-500">{{ state.currentUser.title }}</p>
+              <p class="mt-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">{{ state.currentUser.role }}</p>
+            </div>
+            <button type="button" class="mt-2 flex w-full items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50" @click="logout">
+              Se déconnecter
+            </button>
+          </div>
         </div>
-        <button class="mt-2 flex w-full items-center justify-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50" @click="logout">
-          Se déconnecter
-        </button>
-      </div>
+      </Teleport>
 
       <!-- Contenu principal — router-view remplace les v-else-if -->
       <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -74,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref,computed, Teleport,onMounted, onUnmounted } from 'vue';
 import { RouterView, useRoute, useRouter } from 'vue-router';
 import {
   Building2,
@@ -89,7 +95,7 @@ import Navbar from './components/layout/Navbar.vue';
 import Login from './components/auth/Login.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
-import { getTabFromPath, getVisibleRoutes } from './config/api.js';
+import { getRouteLabel, getTabFromPath, getVisibleRoutes } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
 
@@ -100,13 +106,46 @@ const state            = marketStore.state;
 const ready            = marketStore.ready;
 const showRoleMenu     = marketStore.showRoleMenu;
 const showNotifications = marketStore.showNotifications;
-const pageTitle        = marketStore.pageTitle;
-const pageSubtitle     = marketStore.pageSubtitle;
+const pageTitle = computed(() => getRouteLabel(activeTab.value));
+// const pageSubtitle = computed(() => `${state.market?.name || ''} • Dimanche 23 Août 2026`);
 const overdueCount     = marketStore.overdueCount;
 const overdueMerchants = marketStore.overdueMerchants;
 const roleAbbr         = marketStore.roleAbbr;
 
-const activeTab = computed(() => getTabFromPath(route.path));
+const activeTab = computed(() => route.meta?.tab || route.name || getTabFromPath(route.path));
+
+
+// 1. Create a reactive reference for the current date/time
+const currentDate = ref(new Date());
+
+let timer = null;
+onMounted(() => {
+  timer = setInterval(() => {
+    currentDate.value = new Date();
+  }, 60000); 
+});
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
+
+const pageSubtitle = computed(() => {
+  const marketName = state.market?.name ? `${state.market.name} • ` : '';
+  
+  const formattedDate = currentDate.value.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
+  // Capitalize the first letter of the weekday (e.g., "Dimanche")
+  const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+  return `${marketName}${capitalizedDate}`;
+});
+
+
 
 const iconForTab = (tab) => {
   if (tab.startsWith('dashboard')) {
