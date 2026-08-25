@@ -5,6 +5,62 @@ function titleForRole(roleCode) {
   return 'Utilisateur';
 }
 
+function defaultPermissionsForRole(roleCode) {
+  if (roleCode === 'SUPER_ADMIN') {
+    return [
+      'dashboard.view',
+      'blocks.manage',
+      'places.manage',
+      'merchants.manage',
+      'banks.manage',
+      'assignments.manage',
+      'rents.manage',
+      'payments.manage',
+      'receipts.manage',
+      'imports.manage',
+      'exports.manage',
+      'users.manage',
+      'roles.manage',
+      'permissions.manage',
+      'settings.manage',
+      'reports.view',
+    ];
+  }
+
+  if (roleCode === 'ADMIN') {
+    return [
+      'dashboard.view',
+      'blocks.manage',
+      'places.manage',
+      'merchants.manage',
+      'banks.manage',
+      'assignments.manage',
+      'rents.manage',
+      'payments.manage',
+      'receipts.manage',
+      'imports.manage',
+      'exports.manage',
+      'users.manage',
+      'settings.manage',
+      'reports.view',
+    ];
+  }
+
+  if (roleCode === 'ACCOUNTANT') {
+    return [
+      'dashboard.view',
+      'banks.manage',
+      'rents.manage',
+      'payments.manage',
+      'receipts.manage',
+      'exports.manage',
+      'reports.view',
+    ];
+  }
+
+  return [];
+}
+
 function ensureNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -24,6 +80,7 @@ export function mapCurrentUser(user) {
   if (!user) return null;
 
   const roleCode = user.role?.code || user.role?.name || 'ADMIN';
+  const permissions = Array.isArray(user.permissions) ? user.permissions : [];
   return {
     id: user.id,
     name: user.name || '',
@@ -34,7 +91,7 @@ export function mapCurrentUser(user) {
     role: roleCode,
     roleId: user.role?.id || null,
     title: titleForRole(roleCode),
-    permissions: user.permissions || [],
+    permissions: [...new Set([...defaultPermissionsForRole(roleCode), ...permissions])],
   };
 }
 
