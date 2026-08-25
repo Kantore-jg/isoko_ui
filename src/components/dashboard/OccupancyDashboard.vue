@@ -436,7 +436,7 @@ const assignments = computed(() => marketStore.state.assignments || []);
 const movements = computed(() => marketStore.state.movements || []);
 const activeMerchants = computed(() => (marketStore.state.merchants || []).filter((merchant) => merchant.status === 'ACTIVE' && merchant.id));
 const blockStats = computed(() =>
-  (marketStore.blockStats?.value || [])
+  (marketStore.blockStats || [])
     .filter((block) => block && (block.id || block.code))
     .map((block, index) => ({
       id: block.id || block.code || `block-${index}`,

@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "market-management-ui",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,19 +8,24 @@
     "build": "vite build",
     "preview": "vite preview --host=0.0.0.0",
     "clean": "rm -rf dist",
-    "lint": "vite build"
+    "lint": "vite build",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-vue": "^5.2.4",
     "lucide-vue-next": "^0.546.0",
+    "pinia": "^4.0.3",
     "vite": "^6.2.3",
     "vue": "^3.5.41",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.4.21",
-    "tailwindcss": "^4.1.14"
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.1.14",
+    "vitest": "^4.1.11"
   }
 }

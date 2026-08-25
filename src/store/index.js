@@ -1,4 +1,5 @@
 import { computed, reactive, ref } from 'vue';
+import { createPinia, defineStore, setActivePinia } from 'pinia';
 import {
   getDefaultTabForRole,
   getMonthNames,
@@ -70,6 +71,10 @@ import {
   mapRole,
 } from '../services/apiMappers.js';
 
+export const pinia = createPinia();
+setActivePinia(pinia);
+
+const useMarketStore = defineStore('market', () => {
 const monthNames = getMonthNames();
 
 const state = reactive({
@@ -380,7 +385,8 @@ async function loadBootstrapData(options = {}) {
 
   responses.currentUser = meResponse;
 
-  const resolvedCurrentUser = options.currentUser || mapCurrentUser(meResponse.user);
+  const currentUserPayload = meResponse?.value || meResponse;
+  const resolvedCurrentUser = options.currentUser || mapCurrentUser(currentUserPayload?.user);
   const permissionSet = new Set(resolvedCurrentUser?.permissions || []);
   const resourcesToLoad = getPageResources(tab, permissionSet).filter((resource) => force || !hasCachedResponse(resource));
 
@@ -418,7 +424,7 @@ async function loadBootstrapData(options = {}) {
     }
   }));
 
-  const currentUserResponse = responses.currentUser || resourceFallbacks.currentUser;
+  const currentUserResponse = responses.currentUser?.value || responses.currentUser || resourceFallbacks.currentUser;
   const settingsResponse = responses.market || resourceFallbacks.market;
   const summaryResponse = responses.dashboardSummary || resourceFallbacks.dashboardSummary;
   const blocksResponse = responses.blocks || resourceFallbacks.blocks;
@@ -1202,64 +1208,67 @@ const overdueMerchants = computed(() =>
 const totalTransactions = computed(() => state.banks.reduce((sum, bank) => sum + bank.transactionCount, 0));
 const totalBanked = computed(() => state.banks.reduce((sum, bank) => sum + bank.totalCollected, 0));
 
-export const marketStore = {
-  state,
-  ready,
-  searchQuery,
-  showRoleMenu,
-  showNotifications,
-  currentView,
-  roleAbbr,
-  pageTitle,
-  pageSubtitle,
-  overdueCount,
-  kpis,
-  monthlyTrends,
-  blockStats,
-  overdueMerchants,
-  totalTransactions,
-  totalBanked,
-  init,
-  updateMarket,
-  addBlock,
-  updateBlock,
-  addPlace,
-  updatePlace,
-  addMerchant,
-  addUser,
-  updateUser,
-  deleteUser,
-  updateMerchant,
-  deleteMerchant,
-  assignPlace,
-  terminateAssignment,
-  transferPlace,
-  addBank,
-  updateBank,
-  deleteBank,
-  recordPayment,
-  addRole,
-  updateRole,
-  deleteRole,
-  addPermission,
-  updatePermission,
-  deletePermission,
-  setSelectedReceipt,
-  setIsNewPaymentModalOpen,
-  cancelReceipt,
-  voidPayment,
-  exportExcel,
-  downloadTemplate,
-  importExcel,
-  syncRoute,
-  toggleSidebar,
-  toggleRoleMenu,
-  toggleNotifications,
-  changeRole,
-  setCurrentUser,
-  resetToDefaults,
-  refreshFromBackend,
-  login,
-  logout,
-  getPathFromTab,
-};
+  return {
+    state,
+    ready,
+    searchQuery,
+    showRoleMenu,
+    showNotifications,
+    currentView,
+    roleAbbr,
+    pageTitle,
+    pageSubtitle,
+    overdueCount,
+    kpis,
+    monthlyTrends,
+    blockStats,
+    overdueMerchants,
+    totalTransactions,
+    totalBanked,
+    init,
+    updateMarket,
+    addBlock,
+    updateBlock,
+    addPlace,
+    updatePlace,
+    addMerchant,
+    addUser,
+    updateUser,
+    deleteUser,
+    updateMerchant,
+    deleteMerchant,
+    assignPlace,
+    terminateAssignment,
+    transferPlace,
+    addBank,
+    updateBank,
+    deleteBank,
+    recordPayment,
+    addRole,
+    updateRole,
+    deleteRole,
+    addPermission,
+    updatePermission,
+    deletePermission,
+    setSelectedReceipt,
+    setIsNewPaymentModalOpen,
+    cancelReceipt,
+    voidPayment,
+    exportExcel,
+    downloadTemplate,
+    importExcel,
+    syncRoute,
+    toggleSidebar,
+    toggleRoleMenu,
+    toggleNotifications,
+    changeRole,
+    setCurrentUser,
+    resetToDefaults,
+    refreshFromBackend,
+    login,
+    logout,
+    getPathFromTab,
+  };
+});
+
+export const marketStore = useMarketStore();

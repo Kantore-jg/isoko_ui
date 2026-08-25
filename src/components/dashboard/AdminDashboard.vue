@@ -276,7 +276,7 @@ const dataError = computed(() => marketStore.state.dataError || '');
 const places = computed(() => marketStore.state.places);
 const movements = computed(() => marketStore.state.movements);
 const blockStats = computed(() =>
-  (marketStore.blockStats?.value || [])
+  (marketStore.blockStats || [])
     .filter((block) => block && (block.id || block.code))
     .map((block, index) => ({
       id: block.id || block.code || `block-${index}`,
