@@ -1,7 +1,8 @@
 <template>
-  <header class="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
+  <header class="sticky top-0 z-50 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6">
     <div class="flex min-w-0 items-center gap-3">
       <button
+        type="button"
         class="shrink-0 cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
         :title="collapsed ? 'Déplier le menu latéral' : 'Replier le menu latéral'"
         @click="$emit('toggle-sidebar')"
@@ -19,6 +20,7 @@
     <div class="flex items-center gap-3">
       <div class="relative">
         <button
+          type="button"
           class="relative cursor-pointer rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
           title="Alertes Loyers"
           @click="$emit('toggle-notifications')"
@@ -30,6 +32,7 @@
 
       <div class="relative">
         <button
+          type="button"
           class="flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-2 pr-2.5 py-1 text-left transition-colors hover:bg-slate-100"
           @click="$emit('toggle-role-menu')"
         >
