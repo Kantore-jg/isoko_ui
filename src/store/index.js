@@ -721,7 +721,7 @@ async function addPlace(data) {
     name: data.name || null,
     description: data.notes || data.description || null,
     surface: data.surface,
-    type: data.category || 'STANDARD',
+    type: data.type || data.category || 'STANDARD',
     status: data.status || 'AVAILABLE',
   });
   await hydrateFromApi();
@@ -734,7 +734,7 @@ async function updatePlace(id, data) {
     name: data.name || null,
     description: data.notes || data.description || null,
     surface: data.surface,
-    type: data.category || 'STANDARD',
+    type: data.type || data.category || 'STANDARD',
     status: data.status || 'AVAILABLE',
   });
   await hydrateFromApi();

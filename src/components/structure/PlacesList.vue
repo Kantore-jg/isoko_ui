@@ -106,6 +106,9 @@
       <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <h3 class="mb-4 text-sm font-bold text-slate-900">{{ editingPlace ? 'Modifier la place' : 'Ajouter une place' }}</h3>
         <form class="space-y-4 text-xs" @submit.prevent="savePlace">
+          <p v-if="formError" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+            {{ formError }}
+          </p>
           <div>
             <label class="mb-1 block font-semibold text-slate-700">Bloc *</label>
             <select v-model="form.blockId" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" @change="syncBlockSelection" required>
@@ -137,8 +140,12 @@
             </label>
           </div>
           <div>
-            <label class="mb-1 block font-semibold text-slate-700">Catégorie *</label>
-            <input v-model="form.category" type="text" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+            <label class="mb-1 block font-semibold text-slate-700">Type de place *</label>
+            <select v-model="form.category" class="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 focus:bg-white focus:outline-none" required>
+              <option v-for="option in placeTypeOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
           </div>
           <div>
             <label class="mb-1 block font-semibold text-slate-700">Notes</label>
@@ -146,7 +153,13 @@
           </div>
           <div class="flex justify-end gap-2 border-t border-slate-200 pt-3">
             <button type="button" class="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50" @click="closeModals">Annuler</button>
-            <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700">{{ editingPlace ? 'Enregistrer' : 'Créer la place' }}</button>
+            <button
+              type="submit"
+              class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-400"
+              :disabled="isSaving"
+            >
+              {{ isSaving ? 'Enregistrement…' : editingPlace ? 'Enregistrer' : 'Créer la place' }}
+            </button>
           </div>
         </form>
       </div>
@@ -261,6 +274,17 @@ const editingPlace = ref(null);
 const assignTarget = ref(null);
 const transferTarget = ref(null);
 const terminateTarget = ref(null);
+const formError = ref('');
+const isSaving = ref(false);
+
+const placeTypeOptions = [
+  { value: 'STANDARD', label: 'STANDARD' },
+  { value: 'KIOSK', label: 'KIOSK' },
+  { value: 'BOUTIQUE', label: 'BOUTIQUE' },
+  { value: 'STALL', label: 'STALL' },
+  { value: 'WAREHOUSE', label: 'WAREHOUSE' },
+  { value: 'OTHER', label: 'OTHER' },
+];
 
 const form = reactive({
   blockId: '',
@@ -320,10 +344,11 @@ function initCreateForm(block = blocks.value[0]) {
   const prefix = (block?.code || 'A').replace('Bloc ', '');
   form.code = `${prefix}-${String(count).padStart(3, '0')}`;
   form.rentPrice = block?.defaultRentPrice || 50000;
-  form.category = block?.category || 'Divers';
+  form.category = 'STANDARD';
   form.surface = 6;
   form.status = 'AVAILABLE';
   form.notes = '';
+  formError.value = '';
 }
 
 function openCreate() {
@@ -341,6 +366,7 @@ function openEdit(place) {
   form.surface = place.surface;
   form.status = place.status;
   form.notes = place.notes || '';
+  formError.value = '';
   isCreateOpen.value = true;
 }
 
@@ -351,7 +377,6 @@ function syncBlockSelection() {
   const prefix = block.code.replace('Bloc ', '');
   form.code = `${prefix}-${String(count).padStart(3, '0')}`;
   form.rentPrice = block.defaultRentPrice;
-  form.category = block.category;
 }
 
 async function savePlace() {
@@ -363,19 +388,30 @@ async function savePlace() {
     blockCode: block.code,
     code: form.code.trim(),
     rentPrice: Number(form.rentPrice) || 0,
-    category: form.category.trim(),
+    type: form.category,
     surface: Number(form.surface) || 6,
     status: form.status,
     notes: form.notes.trim(),
   };
 
-  if (editingPlace.value) {
-    await marketStore.updatePlace(editingPlace.value.id, payload);
-  } else {
-    await marketStore.addPlace(payload);
-  }
+  isSaving.value = true;
+  formError.value = '';
 
-  closeModals();
+  try {
+    if (editingPlace.value) {
+      await marketStore.updatePlace(editingPlace.value.id, payload);
+    } else {
+      await marketStore.addPlace(payload);
+    }
+
+    closeModals();
+  } catch (error) {
+    const validationErrors = error?.payload?.errors || {};
+    const firstFieldError = Object.values(validationErrors).flat().find(Boolean);
+    formError.value = firstFieldError || error?.payload?.message || error?.message || 'Impossible d’enregistrer la place.';
+  } finally {
+    isSaving.value = false;
+  }
 }
 
 function openAssign(place) {
@@ -428,6 +464,8 @@ function closeModals() {
   assignTarget.value = null;
   transferTarget.value = null;
   terminateTarget.value = null;
+  formError.value = '';
+  isSaving.value = false;
 }
 
 watch(
