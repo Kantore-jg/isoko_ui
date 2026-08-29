@@ -5,8 +5,8 @@ import {
   getMonthNames,
   getPathFromTab,
   getRouteLabel,
+  getRoutesForUser,
   getTabFromPath,
-  getVisibleRoutes,
 } from '../config/api.js';
 import { downloadBlob, getStoredToken, setStoredToken } from '../services/apiClient.js';
 import {
@@ -358,7 +358,8 @@ function applyApiState(payload) {
 
   state.activeTab = getTabFromPath(window.location.pathname);
   const role = state.currentUser?.role || 'SUPER_ADMIN';
-  if (!getVisibleRoutes(role).some((route) => route.tab === state.activeTab)) {
+  const permissions = state.currentUser?.permissions || [];
+  if (!getRoutesForUser(role, permissions).some((route) => route.tab === state.activeTab)) {
     state.activeTab = getDefaultTabForRole(role);
   }
 }
@@ -1060,7 +1061,8 @@ async function syncRoute(pathname) {
   const nextTab = getTabFromPath(pathname);
   state.activeTab = nextTab;
   const role = state.currentUser?.role || 'SUPER_ADMIN';
-  if (!getVisibleRoutes(role).some((route) => route.tab === nextTab)) {
+  const permissions = state.currentUser?.permissions || [];
+  if (!getRoutesForUser(role, permissions).some((route) => route.tab === nextTab)) {
     state.activeTab = getDefaultTabForRole(role);
   }
   persist();

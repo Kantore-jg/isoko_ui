@@ -15,7 +15,9 @@ describe('mapCurrentUser', () => {
 
     expect(user.role).toBe('ACCOUNTANT');
     expect(user.title).toBe('Chef Comptable');
-    expect(user.permissions).toEqual(['payments.manage']);
+    // Les permissions du rôle par défaut sont fusionnées avec celles de l'API
+    expect(user.permissions).toContain('payments.manage');
+    expect(user.permissions).toContain('dashboard.view');
   });
 
   it('retourne null pour une entrée vide', () => {

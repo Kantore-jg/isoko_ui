@@ -110,7 +110,7 @@
               >
                 <td class="px-4 py-3">
                   <p class="font-bold text-slate-900">{{ user.name }}</p>
-                  <p class="text-[11px] text-slate-400">{{ user.id }}</p>
+                  <!-- <p class="text-[11px] text-slate-400">{{ user.id }}</p> -->
                 </td>
                 <td class="px-4 py-3 text-slate-600">{{ user.email }}</td>
                 <td class="px-4 py-3 font-mono text-slate-700">{{ user.phone || '—' }}</td>

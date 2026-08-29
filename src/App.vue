@@ -96,7 +96,7 @@ import Navbar from './components/layout/Navbar.vue';
 import Login from './components/auth/Login.vue';
 import NewPaymentModal from './components/finances/NewPaymentModal.vue';
 import ReceiptModal from './components/modals/ReceiptModal.vue';
-import { getRouteLabel, getTabFromPath, getVisibleRoutes } from './config/api.js';
+import { getRouteLabel, getTabFromPath, getRoutesForUser } from './config/api.js';
 import { formatCurrency } from './utils/format.js';
 import { marketStore } from './store/index.js';
 
@@ -165,7 +165,10 @@ const iconForTab = (tab) => {
 };
 
 const visibleRoutes = computed(() =>
-  getVisibleRoutes(state.currentUser?.role || 'ACCOUNTANT').map((routeItem) => ({
+  getRoutesForUser(
+    state.currentUser?.role || 'ACCOUNTANT',
+    state.currentUser?.permissions || []
+  ).map((routeItem) => ({
     ...routeItem,
     icon: iconForTab(routeItem.tab),
     badge:

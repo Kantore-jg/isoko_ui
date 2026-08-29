@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { getDefaultTabForRole, getPathFromTab, getVisibleRoutes, ROUTES } from '../config/api.js';
+import { getDefaultTabForRole, getPathFromTab, getRoutesForUser, ROUTES } from '../config/api.js';
 import { getStoredToken } from '../services/apiClient.js';
 import { marketStore } from '../store/index.js';
 
@@ -28,7 +28,7 @@ const routes = ROUTES.map((route) => ({
   path: route.path,
   name: route.tab,
   component: VIEW_COMPONENTS[route.tab] || (() => import('../views/NotFoundView.vue')),
-  meta: { tab: route.tab, roles: route.roles },
+  meta: { tab: route.tab, roles: route.roles, permissions: route.permissions || [] },
 }));
 
 const router = createRouter({
@@ -36,17 +36,39 @@ const router = createRouter({
   routes,
 });
 
+function resolveAccessiblePath() {
+  const role = marketStore.state.currentUser?.role || 'SUPER_ADMIN';
+  const permissions = marketStore.state.currentUser?.permissions || [];
+  const accessible = getRoutesForUser(role, permissions);
+  return getPathFromTab(accessible[0]?.tab || getDefaultTabForRole(role));
+}
+
 router.beforeEach((to) => {
   // Redirige vers login si pas de token et hors de la page racine
   if (!marketStore.state.currentUser && !getStoredToken() && to.path !== '/') {
     return '/';
   }
 
+  const currentUser = marketStore.state.currentUser;
+
+  // Session pas encore hydratée : on ne bloque pas (App.vue attend `ready`)
+  if (!currentUser) {
+    return undefined;
+  }
+
   // Contrôle d'accès par rôle
-  const role    = marketStore.state.currentUser?.role || 'SUPER_ADMIN';
-  const allowed = to.meta.roles || [];
-  if (allowed.length > 0 && !allowed.includes(role)) {
-    return getPathFromTab(getDefaultTabForRole(role));
+  const allowedRoles = to.meta.roles || [];
+  if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser.role)) {
+    return resolveAccessiblePath();
+  }
+
+  // Contrôle d'accès par permissions (au moins une requise suffit)
+  const requiredPermissions = to.meta.permissions || [];
+  if (requiredPermissions.length > 0) {
+    const userPermissions = new Set(currentUser.permissions || []);
+    if (!requiredPermissions.some((permission) => userPermissions.has(permission))) {
+      return resolveAccessiblePath();
+    }
   }
 });
 
