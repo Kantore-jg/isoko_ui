@@ -154,7 +154,12 @@ export function mapPlace(place) {
     code: place.code || '',
     name: place.name || '',
     description: place.description || '',
-    rentPrice: ensureNumber(place.rent_price ?? place.default_rent_amount ?? activeAssignment?.rent_amount),
+    rentPrice: ensureNumber(
+      place.rent_price ??
+      place.default_rent_amount ??
+      block.default_rent_amount ??
+      activeAssignment?.rent_amount
+    ),
     category: place.type || '',
     surface: ensureNumber(place.surface),
     status: place.status || 'AVAILABLE',

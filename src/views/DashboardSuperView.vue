@@ -66,17 +66,15 @@
 
 <script setup>
 import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { DollarSign, Grid, Receipt, Users } from 'lucide-vue-next';
 import MetricCard from '../components/common/MetricCard.vue';
 import DataStatePanel from '../components/common/DataStatePanel.vue';
 import { formatCurrency } from '../utils/format.js';
 import { marketStore } from '../store/index.js';
 
-const state           = marketStore.state;
-const kpis            = marketStore.kpis;
-const monthlyTrends   = marketStore.monthlyTrends;
-const overdueCount    = marketStore.overdueCount;
-const overdueMerchants = marketStore.overdueMerchants;
+const state = marketStore.state;
+const { kpis, monthlyTrends, overdueCount, overdueMerchants } = storeToRefs(marketStore);
 
 const currentYear      = new Date().getFullYear();
 const currentMonthLabel = computed(() => {

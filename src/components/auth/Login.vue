@@ -34,6 +34,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { getDefaultTabForRole, getPathFromTab } from '../../config/api.js';
 import { marketStore } from '../../store/index.js';
 
 const emit = defineEmits(['success']);
@@ -52,12 +53,13 @@ async function submitLogin() {
   errorMessage.value = '';
 
   try {
-    await marketStore.login({
+    const user = await marketStore.login({
       login: form.login,
       password: form.password,
     });
     emit('success');
-    await router.replace('/dashboard');
+    const nextPath = getPathFromTab(getDefaultTabForRole(user?.role));
+    await router.replace(nextPath);
   } catch (error) {
     errorMessage.value = error?.message || 'Connexion impossible.';
   } finally {

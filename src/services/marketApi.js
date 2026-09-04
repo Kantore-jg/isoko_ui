@@ -68,6 +68,30 @@ export function deleteBankApi(id) {
   return apiRequest(`/banks/${id}`, { method: 'DELETE' });
 }
 
+// ─── Périodes de loyer ──────────────────────────────────────────────────────
+
+export function listRentPeriodsApi(params = {}) {
+  return listApi('rent-periods', params);
+}
+
+export function createRentPeriodApi(payload) {
+  return apiRequest('/rent-periods', { method: 'POST', body: payload });
+}
+
+export function updateRentPeriodApi(id, payload) {
+  return apiRequest(`/rent-periods/${id}`, { method: 'PUT', body: payload });
+}
+
+export function deleteRentPeriodApi(id) {
+  return apiRequest(`/rent-periods/${id}`, { method: 'DELETE' });
+}
+
+export function generateObligationsApi(periodId, payload = {}) {
+  return apiRequest(`/rent-periods/${periodId}/generate-obligations`, { method: 'POST', body: payload });
+}
+
+// ─── Tarifs de loyer ────────────────────────────────────────────────────────
+
 export function listRentRatesApi(params = {}) {
   return listApi('rent-rates', params);
 }

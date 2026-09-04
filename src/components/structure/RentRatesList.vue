@@ -417,6 +417,18 @@ function openCreate() {
   isFormOpen.value = true;
 }
 
+// Pré-remplir le montant avec le tarif par défaut du bloc sélectionné
+watch(
+  () => form.blockId,
+  (blockId) => {
+    if (!blockId || editingRate.value) return;
+    const block = blocks.value.find((b) => b.id === blockId || Number(b.id) === Number(blockId));
+    if (block && block.defaultRentPrice > 0) {
+      form.amount = block.defaultRentPrice;
+    }
+  }
+);
+
 function openEdit(rate) {
   resetForm(rate);
   isFormOpen.value = true;

@@ -181,6 +181,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import {
   AlertCircle,
@@ -199,7 +200,7 @@ import { marketStore } from '../../store/index.js';
 import { formatCurrency } from '../../utils/format.js';
 
 const router = useRouter();
-const kpis = marketStore.kpis;
+const { kpis } = storeToRefs(marketStore);
 const isLoading = computed(() => marketStore.state.isLoadingData);
 const dataError = computed(() => marketStore.state.dataError || '');
 const payments = computed(() => marketStore.state.payments || []);

@@ -119,6 +119,10 @@ const months = [
   { num: 6, name: 'Juin' },
   { num: 7, name: 'Juillet' },
   { num: 8, name: 'Août' },
+  { num: 9, name: 'Septembre' },
+  { num: 10, name: 'Octobre' },
+  { num: 11, name: 'Novembre' },
+  { num: 12, name: 'Décembre' },
 ];
 
 const filteredObligations = computed(() =>

@@ -317,7 +317,7 @@ const terminateForm = reactive({
 
 const filteredPlaces = computed(() =>
   places.value.filter((place) => {
-    const matchBlock = selectedBlock.value === 'ALL' || place.blockId === selectedBlock.value || place.blockCode === selectedBlock.value;
+    const matchBlock = selectedBlock.value === 'ALL' || Number(place.blockId) === Number(selectedBlock.value) || place.blockCode === selectedBlock.value;
     const matchStatus = selectedStatus.value === 'ALL' || place.status === selectedStatus.value;
     const q = searchQuery.value.toLowerCase();
     const matchSearch =
